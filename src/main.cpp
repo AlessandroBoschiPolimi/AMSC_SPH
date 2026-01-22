@@ -12,15 +12,13 @@ int main(int, char**)
 	SPHSimulation sph;
 
 	ImGuiViewer imguiViewer;
-	// XYZExporter exporter;
+	//XYZExporter exporter;
 
 	sph.AddObserver(&imguiViewer);
-	// sph.addObserver(&exporter);
+	//sph.AddObserver(&exporter);
 
 	imguiViewer.Start();
 	sph.Start();
-
-	std::cout << "End\n";
 
 	return 0;
 }

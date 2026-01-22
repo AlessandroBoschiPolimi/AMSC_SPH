@@ -45,15 +45,6 @@ Lasciate ogne ';', voi ch'intrate.
 #endif
 
 
-#ifdef LEAK_CHECK
-#define LEAK_STMT(x) x
-#define LEAK_DEFAULT(x) { x; }
-#else
-#define LEAK_STMT(x)
-#define LEAK_DEFAULT(x) = default
-#endif
-
-
 #include <inttypes.h>
 #include <numbers>
 
@@ -142,44 +133,18 @@ using producer = std::function<T(void)>;
 
 
 // ################################################################## COORD ##################################################################
-template <typename T, size_t D, bool = std::is_trivially_destructible<T>::value>
+template <typename T, size_t D>
 struct coord;
 
 template <typename T>
-struct coord<T, 2, true>
-{
-	union { T x, col; };
-	union { T y, row; };
-};
-template <typename T>
-struct coord<T, 2, false>
+struct coord<T, 2>
 {
 	T x, y;
 };
 template <typename T>
-struct coord<T, 3, true>
-{
-	union { T x, r; };
-	union { T y, g; };
-	union { T z, b; };
-};
-template <typename T>
-struct coord<T, 3, false>
+struct coord<T, 3>
 {
 	T x, y, z;
-};
-template <typename T>
-struct coord<T, 4, true>
-{
-	union { T x, r; };
-	union { T y, g; };
-	union { T z, b; };
-	union { T w, a; };
-};
-template <typename T>
-struct coord<T, 4, false>
-{
-	T x, y, z, w;
 };
 
 
@@ -190,10 +155,6 @@ coord<T, 2> operator+(const coord<T, 2>& a, const coord<T, 2>& b) {
 template <typename T>
 coord<T, 3> operator+(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
-}
-template <typename T>
-coord<T, 4> operator+(const coord<T, 4>& a, const coord<T, 4>& b) {
-	return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
 }
 // ################################################################## COORD ##################################################################
 

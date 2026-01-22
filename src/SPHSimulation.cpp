@@ -27,6 +27,8 @@ void SPHSimulation::Step()
 {
 	NotifyStartFrame();
 
+	coord<float, 2, true> coord1, coord2;
+	auto res = coord1 + coord2;
 	// artificial workload
 	std::this_thread::sleep_for(100ms);
 	for (auto& p : m_Particles)

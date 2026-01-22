@@ -91,7 +91,7 @@ void ImGuiViewer::DrawStatsWindow() {
 		m_Changed |= ImGui::SliderFloat("Stiffness"   , &m_Stiffness  ,   0      , 5000     , "%.5f");
 		m_Changed |= ImGui::SliderFloat("Viscosity"   , &m_Viscosity  ,   0      ,    1     , "%.5f");
 		m_Changed |= ImGui::SliderFloat("dt"          , &m_TimeStep   ,   0.0001f,    0.005f, "%.5f");
-		m_Changed |= ImGui::SliderFloat("increment"   , &m_Increment  ,   0.000f ,    0.1f  , "%.5f");
+		m_Changed |= ImGui::SliderFloat("increment"   , &m_Increment  ,  -0.1f   ,    0.1f  , "%.5f");
 
 		ImGui::Text("Particles: %d", m_Particles.size());
 		ImGui::Text("UI  FPS: %.1f", ImGui::GetIO().Framerate);

@@ -3,6 +3,7 @@
 
 struct Particle
 {
-    coord<float, 2, false> pos;
-    float density;
+	using coord_t = coord<float, 2>;
+	coord_t pos;
+	float density;
 };

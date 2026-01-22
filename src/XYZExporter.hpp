@@ -7,6 +7,7 @@ class XYZExporter : public Observer {
 public:
 	~XYZExporter() override = default;
 
+	/// Executes on the simulation thread
 	void OnEndFrame() override {
 		// TODO: ASSERT m_Sim != nullptr
 

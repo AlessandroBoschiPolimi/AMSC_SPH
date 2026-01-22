@@ -21,17 +21,25 @@ public:
 			m_ImguiThread.join();
 	}
 
+	/// Executes on the simulation thread
 	void OnStartFrame() override;
+	/// Executes on the simulation thread
 	void OnEndFrame() override;
+	/// Executes on the simulation thread
 	void Attach(SPHSimulation* sim) override;
 
 private:
+	/// Executes on the UI thread
 	void Loop();
 
-	void Deinit();
+	/// UI Setup
 	bool Init();
+	/// UI Cleanup
+	void Deinit();
 
+	/// Executes on the UI thread
 	void DrawStatsWindow();
+	/// Executes on the UI thread
 	void DrawVisualizationWindow();
 
 private:

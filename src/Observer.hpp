@@ -10,10 +10,13 @@ public:
 	virtual ~Observer() = default;
 
 	/// Mainly used to read simulation parameters / timing
+	/// Executes on the simulation thread
 	virtual void OnStartFrame() {}
 	/// Mainly used to alter simulation parameters / timing
+	/// Executes on the simulation thread
 	virtual void OnEndFrame() {}
 
+	/// Executes on the simulation thread
 	virtual void Attach(SPHSimulation* sim) { m_Sim = sim; }
 
 protected:
