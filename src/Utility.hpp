@@ -111,9 +111,9 @@ using i32 =  int32_t;
 using i64 =  int64_t;
 using f32 =  float  ;
 using f64 =  double ;
-	
-template <typename K, typename V>
-using hmap = std::unordered_map<K, V>;
+
+template <typename K, typename V, class H = std::hash<K>>
+using hmap = std::unordered_map<K, V, H>;
 template <typename V>
 using hset = std::unordered_set<V>;
 
@@ -130,6 +130,13 @@ using consumer = std::function<void(T)>;
 template <typename T>
 using producer = std::function<T(void)>;
 // ################################################################## ALIASES ##################################################################
+
+
+// CASTING
+template <typename T, typename X>
+inline constexpr T to(const X& x) { return static_cast<T>(x); }
+template <typename T, typename X, typename _X>
+inline constexpr T to(const stdc::duration<_X, X>& x) { return stdc::duration_cast<T>(x); }
 
 
 // ################################################################## COORD ##################################################################
@@ -156,15 +163,67 @@ template <typename T>
 coord<T, 3> operator+(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
+template <typename T>
+coord<T, 2> operator-(const coord<T, 2>& a, const coord<T, 2>& b) {
+	return { a.x - b.x, a.y - b.y };
+}
+template <typename T>
+coord<T, 3> operator-(const coord<T, 3>& a, const coord<T, 3>& b) {
+	return { a.x - b.x, a.y - b.y, a.z - b.z };
+}
+
+template <typename T>
+bool operator==(const coord<T, 2>& a, const coord<T, 2>& b) {
+	return a.x == b.x && a.y == b.y;
+}
+template <typename T>
+bool operator==(const coord<T, 3>& a, const coord<T, 3>& b) {
+	return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+template <typename T, typename R = T>
+R Dot(const coord<T, 2>& a, const coord<T, 2>& b)
+{
+	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y);
+}
+template <typename T, typename R = T>
+R Dot(const coord<T, 3>& a, const coord<T, 3>& b)
+{
+	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y) + to<R>(a.z) * to<R>(b.z);
+}
+
+template <size_t D>
+struct CoordIntHash;
+
+template <>
+struct CoordIntHash<2> {
+	size_t operator()(const coord<int, 2>& p) const {
+		size_t h1 = std::hash<int>{}(p.x);
+		size_t h2 = std::hash<int>{}(p.y);
+
+		return h1 ^ (h2 + 0x9e3779b97f4a7c15ULL + (h1 << 6) + (h1 >> 2));
+	}
+};
+template <>
+struct CoordIntHash<3> {
+	size_t operator()(const coord<int, 3>& p) const {
+		return ((to<size_t>(p.x) * 73856093) ^
+				(to<size_t>(p.y) * 19349663) ^
+				(to<size_t>(p.z) * 83492791));
+
+		size_t h1 = std::hash<int>{}(p.x);
+		size_t h2 = std::hash<int>{}(p.y);
+		size_t h3 = std::hash<int>{}(p.z);
+
+		size_t seed = h1;
+		seed ^= h2 + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+		seed ^= h3 + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+		return seed;
+	}
+};
 // ################################################################## COORD ##################################################################
 
 
-
-// CASTING
-template <typename T, typename X>
-inline constexpr T to(const X& x) { return static_cast<T>(x); }
-template <typename T, typename X, typename _X>
-inline constexpr T to(const stdc::duration<_X, X>& x) { return stdc::duration_cast<T>(x); }
 
 
 // CONCEPTS

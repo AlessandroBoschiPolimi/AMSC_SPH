@@ -13,7 +13,7 @@ public:
 
 		std::ofstream out(std::format("output-{}", m_Sim->GetTime()));
 		for (auto& p : *m_particles) {
-			out << p.pos.x << " " << p.pos.y << " 0\n";
+			out << p.Position.x << " " << p.Position.y << " 0\n";
 		}
 	}
 

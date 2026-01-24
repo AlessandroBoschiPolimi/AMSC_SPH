@@ -2,6 +2,8 @@
 #include "Observer.hpp"
 #include "Utility.hpp"
 
+#include "SPHSimulation.hpp"
+
 struct GLFWwindow;
 
 // TODO: Make singleton
@@ -44,6 +46,7 @@ private:
 
 private:
 	std::vector<Particle> m_Particles;
+	SPHSimulation::grid_t m_Grid;
 
 	GLFWwindow* window = nullptr;
 	std::atomic<bool> m_Running = false;
@@ -55,9 +58,11 @@ private:
 	float m_SimFPS = 0;
 	stdc::time_point<stdclock> m_SimFrameStart;
 
-	float m_RestDensity = 0;
-	float m_Stiffness   = 0;
-	float m_Viscosity   = 0;
-	float m_TimeStep    = 0;
-	float m_Increment   = 0;
+	SPHSimulation::Params m_SimParams;
+
+	enum ColoringParam
+	{
+		SUBDOMAIN, PRESSURE
+	};
+	ColoringParam m_ColoringParam = SUBDOMAIN;
 };

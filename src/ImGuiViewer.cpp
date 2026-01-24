@@ -37,11 +37,7 @@ void ImGuiViewer::Attach(SPHSimulation* sim)
 {
 	Observer::Attach(sim);
 
-	m_RestDensity = sim->GetRestDensity();
-	m_Stiffness   = sim->GetStiffness  ();
-	m_Viscosity   = sim->GetViscosity  ();
-	m_TimeStep    = sim->GetTimeStep   ();
-	m_Increment   = sim->GetIncrement  ();
+	m_SimParams = sim->GetParams();
 }
 void ImGuiViewer::OnEndFrame()
 {
@@ -54,27 +50,20 @@ void ImGuiViewer::OnEndFrame()
 
 	if (m_Changed)
 	{
-		m_Sim->SetRestDensity(m_RestDensity);
-		m_Sim->SetStiffness  (m_Stiffness  );
-		m_Sim->SetViscosity  (m_Viscosity  );
-		m_Sim->SetTimeStep   (m_TimeStep   );
-		m_Sim->SetIncrement  (m_Increment  );
+		m_Sim->SetParams(m_SimParams);
 	}
 
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
 	// TODO: triple buffering
 	m_Particles = m_Sim->GetParticles();
+	m_Grid = m_Sim->GetGrid();
 }
 void ImGuiViewer::OnStartFrame()
 {
 	// TODO: ASSERT m_Sim != nullptr
 	std::lock_guard<std::mutex> lock(m_Mutex);
 
-	m_RestDensity = m_Sim->GetRestDensity();
-	m_Stiffness   = m_Sim->GetStiffness  ();
-	m_Viscosity   = m_Sim->GetViscosity  ();
-	m_TimeStep    = m_Sim->GetTimeStep   ();
-	m_Increment   = m_Sim->GetIncrement  ();
+	m_SimParams = m_Sim->GetParams();
 
 	m_SimFrameStart = stdclock::now();
 }
@@ -87,15 +76,20 @@ void ImGuiViewer::DrawStatsWindow() {
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 
-		m_Changed |= ImGui::SliderFloat("Rest Density", &m_RestDensity, 500      , 1500     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("Stiffness"   , &m_Stiffness  ,   0      , 5000     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("Viscosity"   , &m_Viscosity  ,   0      ,    1     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("dt"          , &m_TimeStep   ,   0.0001f,    0.005f, "%.5f");
-		m_Changed |= ImGui::SliderFloat("increment"   , &m_Increment  ,  -0.1f   ,    0.1f  , "%.5f");
+		m_Changed |= ImGui::SliderFloat("Rest Density", &m_SimParams.RestDensity, 500      , 1500     , "%.5f");
+		m_Changed |= ImGui::SliderFloat("Stiffness"   , &m_SimParams.Stiffness  ,   0      , 5000     , "%.5f");
+		m_Changed |= ImGui::SliderFloat("Viscosity"   , &m_SimParams.Viscosity  ,   0      ,    1     , "%.5f");
+		m_Changed |= ImGui::SliderFloat("dt"          , &m_SimParams.TimeStep   ,   0.0001f,    0.005f, "%.5f");
+		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength,   0.0001f,    0.5f, "%.5f");
 
 		ImGui::Text("Particles: %d", m_Particles.size());
 		ImGui::Text("UI  FPS: %.1f", ImGui::GetIO().Framerate);
 		ImGui::Text("SPH FPS: %.1f", m_SimFPS);
+
+		const char* items[] = { "Subdomain", "Pressure" };
+		static int coloring_param_int = 0;
+		ImGui::Combo("Coloring Parameter", &coloring_param_int, items, IM_ARRAYSIZE(items));
+		m_ColoringParam = (ColoringParam)coloring_param_int;
 	}
 
 	ImGui::End();
@@ -116,7 +110,7 @@ void ImGuiViewer::DrawVisualizationWindow() {
 	);
 
 	// World -> screen transform
-	auto worldToScreen = [&](const coord<float, 2, false>& p) {
+	auto worldToScreen = [&](const coord<float, 2>& p) {
 		return ImVec2(
 			canvasPos.x + p.x * canvasSize.x,
 			canvasPos.y + (1.0f - p.y) * canvasSize.y
@@ -125,18 +119,31 @@ void ImGuiViewer::DrawVisualizationWindow() {
 
 	// Draw particles
 	for (const auto& p : m_Particles) {
-		ImVec2 pos = worldToScreen(p.pos);
-
+		ImVec2 pos = worldToScreen(p.Position);
 		float r = 2.0f;
-		float d = p.density;
-		float t = (d - 0.1) / (1.0 - 0.1);
-		t = std::clamp(t, 0.0f, 1.0f);
+		ImU32 color = ImColor::HSV(1.0f, 1.0f, 1.0f);
 
-		ImU32 color = ImColor::HSV(
-			0.6f - 0.6f * t, // blue -> red
-			1.0f,
-			1.0f
-		);
+		if (m_ColoringParam == PRESSURE)
+		{
+			float d = p.Density;
+			float t = (d - 0.1) / (1.0 - 0.1);
+			t = std::clamp(t, 0.0f, 1.0f);
+
+			color = ImColor::HSV(
+				0.6f - 0.6f * t, // blue -> red
+				1.0f,
+				1.0f
+			);
+		}
+		else if (m_ColoringParam == SUBDOMAIN)
+		{
+			SPHSimulation::cell_pos_t cell_pos = SPHSimulation::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
+			color = ImColor::HSV(
+				1.0f - cell_pos.x * 0.1,
+				1.0f - cell_pos.y * 0.1,
+				1.0f
+			);
+		}
 
 		drawList->AddCircleFilled(pos, r, color);
 	}

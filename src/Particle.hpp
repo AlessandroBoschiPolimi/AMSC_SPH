@@ -3,7 +3,11 @@
 
 struct Particle
 {
-	using coord_t = coord<float, 2>;
-	coord_t pos;
-	float density;
+	using vec_t = coord<float, 2>;
+	vec_t Position;
+	vec_t Velocity;
+	vec_t Acceleration;
+	float Mass;
+	float Density;
+	float Pressure;
 };
