@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <cmath>
 #include "Observer.hpp"
 #include "Kernel.hpp"
 
@@ -41,7 +42,7 @@ private:
 	void BuildGrid();
 	/// Populates "out" with the neighbors of particle i-th
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
-	void FindAllNeigbors();
+	void FindAllNeighbors();
 	void ComputeDensity(idx_t);
 	void ComputePressure();
 
@@ -61,7 +62,7 @@ private:
 
 	grid_t m_Grid;
 
-	Kernel W_Kernel;
+	Kernel W_Ker;
 
 
 public:
