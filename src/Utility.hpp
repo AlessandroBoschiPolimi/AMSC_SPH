@@ -156,6 +156,22 @@ struct coord<T, 3>
 
 
 template <typename T>
+coord<T, 2> operator/(const coord<T, 2>& a, const T C) {
+	return { a.x / C,  a.y / C };
+}
+template <typename T>
+coord<T, 3> operator/(const coord<T, 3>& a, const T C) {
+	return { a.x / C,  a.y / C,  a.z / C };
+}
+template <typename T>
+coord<T, 2> operator*(const T C, const coord<T, 2>& a) {
+	return { C * a.x, C * a.y };
+}
+template <typename T>
+coord<T, 3> operator*(const T C, const coord<T, 3>& a) {
+	return { C * a.x, C * a.y, C * a.z };
+}
+template <typename T>
 coord<T, 2> operator+(const coord<T, 2>& a, const coord<T, 2>& b) {
 	return { a.x + b.x, a.y + b.y };
 }
