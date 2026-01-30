@@ -1,11 +1,14 @@
 #include "SPHSimulation.hpp"
 
+#define G_CONSTANT 9.81f
 
 
 SPHSimulation::SPHSimulation():
 	W_Ker(m_Params.SmoothingLength)
 {
 	int maxx = 100, maxy = 100;
+	vec_t vertical_direction{0, 1};
+	vec_t zero_direction{0, 0};
 	for (int x = 0; x < maxx; x++)
 	{
 		for (int y = 0; y < maxy; y++)
@@ -14,6 +17,8 @@ SPHSimulation::SPHSimulation():
 			p.Position.y = float(y) / maxy;
 			p.Position.x = float(x) / maxx;
 			p.Density = p.Position.x / 2 + 0.1;
+			p.Velocity = zero_direction;
+			p.F_grav = G_CONSTANT * vertical_direction;
 			m_Particles.push_back(p);
 		}
 	}
@@ -87,10 +92,12 @@ void SPHSimulation::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 		}
 	}
 }
+
 void SPHSimulation::FindAllNeighbors(){
 	for (int i = 0; i < m_Particles.size(); i++)
 		FindNeighbors(i, m_Particles[i].Neighbors);
 }
+
 void SPHSimulation::ComputeDensity(idx_t i)
 {
 		m_Particles[i].Density = 0;
@@ -98,13 +105,39 @@ void SPHSimulation::ComputeDensity(idx_t i)
 			float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
 			m_Particles[i].Density +=  m_Particles[j].Mass* W_ij;
 		}
-}		
-void SPHSimulation::ComputePressure()
-{
 }
 
-void SPHSimulation::ComputeForces()
+void SPHSimulation::ComputeForceViscosity(idx_t i)
 {
+	m_Particles[i].F_visc = vec_t{0, 0};
+	for (auto &j: m_Particles[i].Neighbors){
+		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
+		vec_t v_ij = m_Particles[i].Velocity - m_Particles[j].Velocity;
+		vec_t x_ij = m_Particles[i].Position - m_Particles[j].Position;
+		float numerator	= m_Particles[j].Mass * Dot(x_ij, DW_ij);
+		float denominator = m_Particles[j].Density * (Dot(x_ij, x_ij) + 
+					0.01 * std::pow(m_Params.SmoothingLength, 2.0f));
+		m_Particles[i].F_visc = m_Particles[i].F_visc + 
+					2 * m_Params.Viscosity *
+				       	m_Particles[i].Mass*	
+					(numerator / denominator) * v_ij;
+	}
+}
+
+void SPHSimulation::ComputeForcePressure(idx_t i)
+{
+	m_Particles[i].F_press = vec_t{0, 0};
+	for (auto &j: m_Particles[i].Neighbors){
+		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
+		m_Particles[i].F_press = m_Particles[i].F_press -
+				m_Particles[j].Mass * 
+				(m_Particles[j].Pressure / std::pow(m_Particles[j].Density, 2.0f) +
+				m_Particles[i].Pressure / std::pow(m_Particles[i].Density, 2.0f)) *
+				DW_ij;
+	}
+	m_Particles[i].F_press = m_Particles[i].Mass /
+				 m_Particles[i].Density *
+				 m_Particles[i].F_press;
 }
 
 void SPHSimulation::Integrate()

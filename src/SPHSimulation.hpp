@@ -44,9 +44,8 @@ private:
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 	void FindAllNeighbors();
 	void ComputeDensity(idx_t);
-	void ComputePressure();
-
-	void ComputeForces();
+	void ComputeForcePressure(idx_t);
+	void ComputeForceViscosity(idx_t);
 	void Integrate();
 	void HandleBoundaries();
 
