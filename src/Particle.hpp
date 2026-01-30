@@ -7,9 +7,9 @@ struct Particle
 	using idx_t = u32;
 	vec_t Position;
 	vec_t Velocity;
-	vec_t F_grav;
-	vec_t F_visc;
-	vec_t F_press;
+	vec_t A_grav;
+	vec_t A_visc;
+	vec_t A_press;
 	float Mass;
 	float Density;
 	float Pressure;

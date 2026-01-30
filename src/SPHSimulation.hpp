@@ -19,7 +19,8 @@ public:
 		float Stiffness = 2000.0f;
 		float Viscosity = 0.1f;
 		float TimeStep = 0.001f;
-		float SmoothingLength = 0.1;
+		float SmoothingLength = 0.1f;
+		float PressureError = 1e-4f;
 	};
 
 public:
@@ -44,8 +45,8 @@ private:
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 	void FindAllNeighbors();
 	void ComputeDensity(idx_t);
-	void ComputeForcePressure(idx_t);
-	void ComputeForceViscosity(idx_t);
+	void ComputeAccelerationPressure(idx_t);
+	void ComputeAccelerationViscosity(idx_t);
 	void Integrate();
 	void HandleBoundaries();
 
