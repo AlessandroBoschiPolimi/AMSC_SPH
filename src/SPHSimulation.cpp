@@ -18,6 +18,7 @@ SPHSimulation::SPHSimulation():
 			p.Position.x = float(x) / maxx;
 			p.Density = p.Position.x / 2 + 0.1;
 			p.Velocity = zero_direction;
+			p.Mass = 0.1f;
 			p.A_grav = G_CONSTANT * vertical_direction;
 			m_Particles.push_back(p);
 		}
@@ -28,7 +29,7 @@ SPHSimulation::SPHSimulation():
 void SPHSimulation::Start()
 {
 	// TODO: Specify final timestep, and display in the ui the current progress (percentage and value)
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 1000; i++)
 		Step();
 }
 void SPHSimulation::Step()
@@ -39,7 +40,7 @@ void SPHSimulation::Step()
 	BuildGrid();
 	FindAllNeighbors();
 	Initialize();
-	IterativePressure();	
+	//IterativePressure();	
 //	HandleBoundaries();
 
 	m_Time += m_Params.TimeStep;
@@ -117,8 +118,8 @@ void SPHSimulation::IterativePressure(){
 				error = curr_error;
 			ComputePressure(i);
 			ComputeAccelerationPressure(i);
-			UpdateVelocityInitial(i);
-			UpdatePositionInitial(i);
+			UpdateVelocityIteration(i);
+			UpdatePositionIteration(i);
 		}
 	}
 }
@@ -185,7 +186,7 @@ void SPHSimulation::UpdateVelocityInitial(idx_t i)
 {
 	m_Particles[i].Velocity = m_Particles[i].Velocity +
 				  m_Params.TimeStep *
-				  (m_Particles[i].A_grav+
+				  (m_Particles[i].A_grav +
 				  m_Particles[i].A_visc);
 }
 void SPHSimulation::UpdateVelocityIteration(idx_t i)

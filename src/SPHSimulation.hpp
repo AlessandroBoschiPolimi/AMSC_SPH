@@ -17,10 +17,10 @@ public:
 	{
 		float RestDensity = 1000.0f;
 		float Stiffness = 2000.0f;
-		float Viscosity = 0.1f;
+		float Viscosity = 1e-5f;
 		float TimeStep = 0.001f;
 		float SmoothingLength = 0.1f;
-		float PressureTol = 1e-4f;
+		float PressureTol = 1e-1f;
 	};
 
 public:
