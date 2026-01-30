@@ -44,10 +44,13 @@ private:
 	/// Populates "out" with the neighbors of particle i-th
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 	void FindAllNeighbors();
-	void ComputeDensity(idx_t);
-	void ComputeAccelerationPressure(idx_t);
-	void ComputeAccelerationViscosity(idx_t);
-	void Integrate();
+	void ComputeDensity(idx_t i);
+	void ComputeAccelerationPressure(idx_t i);
+	void ComputeAccelerationViscosity(idx_t i);
+	void UpdatePositionInitial(idx_t i);
+	void UpdatePositionIteration(idx_t i);
+	void UpdateVelocityInitial(idx_t i);
+	void UpdateVelocityIteration(idx_t i);
 	void HandleBoundaries();
 
 

@@ -138,8 +138,30 @@ void SPHSimulation::ComputeAccelerationPressure(idx_t i)
 				 m_Particles[i].A_press;
 }
 
-void SPHSimulation::Integrate()
+void SPHSimulation::UpdatePositionInitial(idx_t i)
 {
+	m_Particles[i].Position = m_Particles[i].Position +
+				  m_Params.TimeStep *
+				  m_Particles[i].Velocity;
+}
+void SPHSimulation::UpdatePositionIteration(idx_t i)
+{
+	m_Particles[i].Position = m_Particles[i].Position +
+				  std::pow(m_Params.TimeStep, 2.0f) *
+				  m_Particles[i].A_press;
+}
+void SPHSimulation::UpdateVelocityInitial(idx_t i)
+{
+	m_Particles[i].Velocity = m_Particles[i].Velocity +
+				  m_Params.TimeStep *
+				  (m_Particles[i].A_grav+
+				  m_Particles[i].A_visc);
+}
+void SPHSimulation::UpdateVelocityIteration(idx_t i)
+{
+	m_Particles[i].Velocity = m_Particles[i].Velocity +
+				  m_Params.TimeStep *
+				  m_Particles[i].A_press;
 }
 
 void SPHSimulation::HandleBoundaries()
