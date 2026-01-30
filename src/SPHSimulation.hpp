@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include "Observer.hpp"
-
+#include "Kernel.hpp"
 
 class SPHSimulation
 {
@@ -41,8 +41,8 @@ private:
 	void BuildGrid();
 	/// Populates "out" with the neighbors of particle i-th
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
-
-	void ComputeDensity();
+	void FindAllNeigbors();
+	void ComputeDensity(idx_t);
 	void ComputePressure();
 
 	void ComputeForces();
@@ -61,6 +61,7 @@ private:
 
 	grid_t m_Grid;
 
+	Kernel W_Kernel;
 
 
 public:

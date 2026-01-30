@@ -2,7 +2,8 @@
 
 
 
-SPHSimulation::SPHSimulation()
+SPHSimulation::SPHSimulation():
+	W_Ker(m_Params.SmoothingLength)
 {
 	int maxx = 100, maxy = 100;
 	for (int x = 0; x < maxx; x++)
@@ -15,7 +16,7 @@ SPHSimulation::SPHSimulation()
 			p.Density = p.Position.x / 2 + 0.1;
 			m_Particles.push_back(p);
 		}
-	}
+	})
 }
 
 
@@ -87,9 +88,18 @@ void SPHSimulation::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 		}
 	}
 }
-
-void SPHSimulation::ComputeDensity()
+void SPHSimulation::FindAllNeighbors(){
+	for (int i = 0; i < m_Particle.size(); i++)
+		FindNeighbors(i, m_Particles[i].Neighbors);
+}
+void SPHSimulation::ComputeDensity(idx_t i)
 {
+		m_Particles[i].Density = 0;
+		for (auto &Neighbor: m_Particles[i].Neighbors){
+			float W_ij = W_Kernel(m_Particle[i], Neighbor);
+			m_Particles[i].Density += Neigbor.mass * W_ij;
+		}
+	}		
 }
 void SPHSimulation::ComputePressure()
 {
