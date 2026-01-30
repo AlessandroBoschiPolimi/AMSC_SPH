@@ -20,7 +20,7 @@ public:
 		float Viscosity = 0.1f;
 		float TimeStep = 0.001f;
 		float SmoothingLength = 0.1f;
-		float PressureError = 1e-4f;
+		float PressureTol = 1e-4f;
 	};
 
 public:
@@ -44,7 +44,10 @@ private:
 	/// Populates "out" with the neighbors of particle i-th
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 	void FindAllNeighbors();
+	void Initialize();
+	void IterativePressure();
 	void ComputeDensity(idx_t i);
+	void ComputePressure(idx_t i);
 	void ComputeAccelerationPressure(idx_t i);
 	void ComputeAccelerationViscosity(idx_t i);
 	void UpdatePositionInitial(idx_t i);

@@ -37,11 +37,9 @@ void SPHSimulation::Step()
 
 	// Split the particles in a grid of subdomains.
 	BuildGrid();
-//	ComputeDensity();
-//	ComputePressure();
-//
-//	ComputeForces();   // pressure + viscosity + gravity
-//	Integrate();
+	FindAllNeighbors();
+	Initialize();
+	IterativePressure();	
 //	HandleBoundaries();
 
 	m_Time += m_Params.TimeStep;
@@ -98,13 +96,46 @@ void SPHSimulation::FindAllNeighbors(){
 		FindNeighbors(i, m_Particles[i].Neighbors);
 }
 
+void SPHSimulation::Initialize(){
+	for (int i = 0; i < m_Particles.size(); i++)
+		ComputeDensity(i);
+	for (int i = 0; i < m_Particles.size(); i++){
+		ComputeAccelerationViscosity(i);
+		UpdateVelocityInitial(i);
+		UpdatePositionInitial(i);
+	}
+}
+void SPHSimulation::IterativePressure(){
+	float error = 2 * m_Params.PressureTol;
+	while (error > m_Params.PressureTol){
+		for (int i = 0; i < m_Particles.size(); i++){
+			float old_dens = m_Particles[i].Density;
+			ComputeDensity(i);
+			float new_dens = m_Particles[i].Density;
+			float curr_error = std::abs(new_dens - old_dens);
+			if (curr_error > error)
+				error = curr_error;
+			ComputePressure(i);
+			ComputeAccelerationPressure(i);
+			UpdateVelocityInitial(i);
+			UpdatePositionInitial(i);
+		}
+	}
+}
+
 void SPHSimulation::ComputeDensity(idx_t i)
 {
-		m_Particles[i].Density = 0;
-		for (auto &j: m_Particles[i].Neighbors){
-			float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
-			m_Particles[i].Density +=  m_Particles[j].Mass* W_ij;
-		}
+	m_Particles[i].Density = 0;
+	for (auto &j: m_Particles[i].Neighbors){
+		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
+		m_Particles[i].Density +=  m_Particles[j].Mass* W_ij;
+	}
+}
+
+void SPHSimulation::ComputePressure(idx_t i){
+	m_Particles[i].Pressure = m_Params.Stiffness *
+				 (m_Particles[i].Density -
+				 m_Params.RestDensity);
 }
 
 void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
