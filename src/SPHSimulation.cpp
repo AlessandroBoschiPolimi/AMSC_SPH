@@ -7,7 +7,7 @@ SPHSimulation::SPHSimulation():
 	W_Ker(m_Params.SmoothingLength)
 {
 	int maxx = 100, maxy = 100;
-	vec_t vertical_direction{0, 1};
+	vec_t vertical_direction{0, -1};
 	vec_t zero_direction{0, 0};
 	for (int x = 0; x < maxx; x++)
 	{
@@ -16,7 +16,6 @@ SPHSimulation::SPHSimulation():
 			Particle p;
 			p.Position.y = float(y) / maxy;
 			p.Position.x = float(x) / maxx;
-			p.Density = p.Position.x / 2 + 0.1;
 			p.Velocity = zero_direction;
 			p.Mass = 0.1f;
 			p.A_grav = G_CONSTANT * vertical_direction;
@@ -29,19 +28,19 @@ SPHSimulation::SPHSimulation():
 void SPHSimulation::Start()
 {
 	// TODO: Specify final timestep, and display in the ui the current progress (percentage and value)
-	for (int i = 0; i < 1000; i++)
-		Step();
+	for (int i = 0; i < 10000; i++){
+		Step(i);
+	}
 }
-void SPHSimulation::Step()
+void SPHSimulation::Step(int step_num)
 {
 	NotifyStartFrame();
 
 	// Split the particles in a grid of subdomains.
 	BuildGrid();
 	FindAllNeighbors();
-	Initialize();
-	//IterativePressure();	
-//	HandleBoundaries();
+	Initialize(step_num);
+	IterativePressure();	
 
 	m_Time += m_Params.TimeStep;
 	m_Frame++;
@@ -92,23 +91,43 @@ void SPHSimulation::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 	}
 }
 
-void SPHSimulation::FindAllNeighbors(){
+void SPHSimulation::FindAllNeighbors()
+{
 	for (int i = 0; i < m_Particles.size(); i++)
 		FindNeighbors(i, m_Particles[i].Neighbors);
 }
 
-void SPHSimulation::Initialize(){
+void SPHSimulation::Initialize(int step_num)
+{
+	/*
+	 * Non-iterative part of the timestep
+	 * In each timestep, set initial force due to Viscosity
+	 * Apply this and gravity force to all the particles
+	 * In the first step, we also need to initialize density
+	 */
+	if (step_num == 1)
+	{
+		for (int i = 0; i < m_Particles.size(); i++)
+			ComputeDensity(i);
+	}
 	for (int i = 0; i < m_Particles.size(); i++)
-		ComputeDensity(i);
-	for (int i = 0; i < m_Particles.size(); i++){
+	{
 		ComputeAccelerationViscosity(i);
 		UpdateVelocityInitial(i);
 		UpdatePositionInitial(i);
 	}
 }
-void SPHSimulation::IterativePressure(){
+void SPHSimulation::IterativePressure()
+{
+	/*
+	 * Use iterative SESPH scheme with splitting, Presentation p. 121
+	 * Recompute pressure and density multiple times until 
+	 * the || rho_old - rho_new ||_max < err (user defined error)
+	 * Unce scheem converges, keep the updated position end velocity
+	 */
 	float error = 2 * m_Params.PressureTol;
 	while (error > m_Params.PressureTol){
+		error = 0;
 		for (int i = 0; i < m_Particles.size(); i++){
 			float old_dens = m_Particles[i].Density;
 			ComputeDensity(i);
@@ -133,14 +152,18 @@ void SPHSimulation::ComputeDensity(idx_t i)
 	}
 }
 
-void SPHSimulation::ComputePressure(idx_t i){
+void SPHSimulation::ComputePressure(idx_t i)
+{
+	//Calculate pressure from state equation, Presentation p. 121
+	//Stiffness constant is user defined
 	m_Particles[i].Pressure = m_Params.Stiffness *
-				 (m_Particles[i].Density -
-				 m_Params.RestDensity);
+				(m_Particles[i].Density -
+				m_Params.RestDensity);
 }
 
 void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 {
+	//Compute acceleration due to viscosity, Presentation p. 102
 	m_Particles[i].A_visc = vec_t{0, 0};
 	for (auto &j: m_Particles[i].Neighbors){
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
@@ -148,7 +171,7 @@ void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 		vec_t x_ij = m_Particles[i].Position - m_Particles[j].Position;
 		float numerator	= m_Particles[j].Mass * Dot(x_ij, DW_ij);
 		float denominator = m_Particles[j].Density * (Dot(x_ij, x_ij) + 
-					0.01 * std::pow(m_Params.SmoothingLength, 2.0f));
+					0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
 		m_Particles[i].A_visc = m_Particles[i].A_visc + 
 					2 * m_Params.Viscosity *
 					(numerator / denominator) * v_ij;
@@ -157,33 +180,38 @@ void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 
 void SPHSimulation::ComputeAccelerationPressure(idx_t i)
 {
+	//Compute acceleration due to pressure, Presentation p. 102
 	m_Particles[i].A_press = vec_t{0, 0};
-	for (auto &j: m_Particles[i].Neighbors){
+	for (auto &j: m_Particles[i].Neighbors)
+	{
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		m_Particles[i].A_press = m_Particles[i].A_press -
 				m_Particles[j].Mass * 
-				(m_Particles[j].Pressure / std::pow(m_Particles[j].Density, 2.0f) +
-				m_Particles[i].Pressure / std::pow(m_Particles[i].Density, 2.0f)) *
+				(m_Particles[j].Pressure / m_Particles[j].Density / m_Particles[j].Density +
+				m_Particles[i].Pressure / m_Particles[i].Density / m_Particles[i].Density) *
 				DW_ij;
 	}
-	m_Particles[i].A_press =  1.0f / m_Particles[i].Density *
-				 m_Particles[i].A_press;
+	m_Particles[i].A_press =  m_Particles[i].A_press;
 }
 
 void SPHSimulation::UpdatePositionInitial(idx_t i)
 {
+	//Update position due to viscosity and gravity
 	m_Particles[i].Position = m_Particles[i].Position +
 				  m_Params.TimeStep *
 				  m_Particles[i].Velocity;
 }
 void SPHSimulation::UpdatePositionIteration(idx_t i)
 {
+	//Update position due to pressure
 	m_Particles[i].Position = m_Particles[i].Position +
-				  std::pow(m_Params.TimeStep, 2.0f) *
+				  m_Params.TimeStep *
+				  m_Params.TimeStep *
 				  m_Particles[i].A_press;
 }
 void SPHSimulation::UpdateVelocityInitial(idx_t i)
 {
+	//Update velocity due to viscosity and gravity
 	m_Particles[i].Velocity = m_Particles[i].Velocity +
 				  m_Params.TimeStep *
 				  (m_Particles[i].A_grav +
@@ -191,16 +219,11 @@ void SPHSimulation::UpdateVelocityInitial(idx_t i)
 }
 void SPHSimulation::UpdateVelocityIteration(idx_t i)
 {
+	//Update velocity due to pressure
 	m_Particles[i].Velocity = m_Particles[i].Velocity +
 				  m_Params.TimeStep *
 				  m_Particles[i].A_press;
 }
-
-void SPHSimulation::HandleBoundaries()
-{
-}
-
-
 
 
 SPHSimulation::cell_pos_t SPHSimulation::GetCellPosition(const vec_t& p, const float h)

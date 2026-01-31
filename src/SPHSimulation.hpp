@@ -16,10 +16,10 @@ public:
 	struct Params
 	{
 		float RestDensity = 1000.0f;
-		float Stiffness = 2000.0f;
+		float Stiffness = 2.0f*1e9f;
 		float Viscosity = 1e-5f;
 		float TimeStep = 0.001f;
-		float SmoothingLength = 0.1f;
+		float SmoothingLength = 0.001f;
 		float PressureTol = 1e-1f;
 	};
 
@@ -37,15 +37,15 @@ public:
 
 
 private:
-	void Step();
+	void Step(int step_num);
 
 
+	//Functions handling the three parts of the scheme for all the particles 
 	void BuildGrid();
-	/// Populates "out" with the neighbors of particle i-th
-	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 	void FindAllNeighbors();
-	void Initialize();
+	void Initialize(int step_num);
 	void IterativePressure();
+	//Helper functions for the subsequent particles
 	void ComputeDensity(idx_t i);
 	void ComputePressure(idx_t i);
 	void ComputeAccelerationPressure(idx_t i);
@@ -54,7 +54,8 @@ private:
 	void UpdatePositionIteration(idx_t i);
 	void UpdateVelocityInitial(idx_t i);
 	void UpdateVelocityIteration(idx_t i);
-	void HandleBoundaries();
+	/// Populates "out" with the neighbors of particle i-th
+	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 
 
 private:

@@ -16,9 +16,17 @@ float Kernel::GetValue(Particle &xi, Particle &xj) const
 	float q = std::sqrt(Dot(r, r)) / h;
 	float out = 0.0f;
 	if (q < 1.0f)
-		out = (std::pow(2.0f - q, 3.0f) - 4.0f * std::pow(1.0f - q, 3.0f));
+	{
+		//faster then std::pow()
+		float x1 = 2.0f - q;
+		float x2 = 1.0f - q;
+		out = x1 * x1 * x1 - 4.0f * x2 * x2 * x2;
+	}
 	else if (q >= 1.0f && q < 2.0f)
-		out = std::pow(2.0f - q, 3.0f);
+	{
+		float x1 = 2.0f - q;
+		out = x1 * x1 * x1;
+	}
 	return alpha * out;
 }
 
@@ -32,9 +40,16 @@ coord<float, 2> Kernel::GetGradient(Particle &xi, Particle &xj) const
 	float q = std::sqrt(Dot(r, r)) / h;
 	float dW_dq = 0.0f;
 	if (q < 1.0f)
-		dW_dq = -3.0f * std::pow(2.0f - q, 2.0f) + 12.0f * std::pow(1.0f - q, 2.0f);
+	{
+		float x1 = 2.0f - q;
+		float x2 = 1.0f - q;
+		dW_dq = -3.0f * x1 * x1 + 12.0f * x2 * x2;
+	}
 	else if (q >= 1.0f && q < 2.0f)
-		dW_dq = -3.0f * std::pow(2.0f - q, 2.0f);
+	{
+		float x1 = 2.0f - q;
+		dW_dq = -3.0f * x1 * x1;
+	}
 	float prefac =alpha *  dW_dq / (std::sqrt(Dot(r, r)) * h);
 	vec_t grad_W = prefac * r;
 	return grad_W;
