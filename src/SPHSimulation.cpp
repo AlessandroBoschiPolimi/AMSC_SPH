@@ -94,6 +94,7 @@ void SPHSimulation::Step(int step_num)
 
 void SPHSimulation::BuildGrid()
 {
+	m_Grid.clear();
 	m_Grid.reserve(m_Particles.size());
 
 	float h = m_Params.SmoothingLength;
@@ -110,6 +111,22 @@ void SPHSimulation::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 		{  0, -1 }, {  0,  0 }, {  0, +1 },
 		{ +1, -1 }, { +1,  0 }, { +1, +1 }
 	};
+
+	/* for 3d
+	neighborOffsets[27] = {
+		{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
+		{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
+		{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
+
+		{ 0,-1,-1}, { 0,-1,0}, { 0,-1,1},
+		{ 0, 0,-1}, { 0, 0,0}, { 0, 0,1},
+		{ 0, 1,-1}, { 0, 1,0}, { 0, 1,1},
+
+		{ 1,-1,-1}, { 1,-1,0}, { 1,-1,1},
+		{ 1, 0,-1}, { 1, 0,0}, { 1, 0,1},
+		{ 1, 1,-1}, { 1, 1,0}, { 1, 1,1}
+	};
+	*/
 
 	// TODO: maybe reserve out to the number of particles / number of cells.
 

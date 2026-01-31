@@ -37,7 +37,8 @@ void ImGuiViewer::Attach(SPHSimulation* sim)
 {
 	Observer::Attach(sim);
 
-	m_SimParams = sim->GetParams();
+	if (sim != nullptr)
+		m_SimParams = sim->GetParams();
 }
 void ImGuiViewer::OnEndFrame()
 {
@@ -45,8 +46,9 @@ void ImGuiViewer::OnEndFrame()
 	auto dt = simFramEnd - m_SimFrameStart;
 	m_SimFPS = 1'000'000'000.0 / dt.count();
 
-	// TODO: ASSERT m_Sim != nullptr
 	std::lock_guard<std::mutex> lock(m_Mutex);
+	if (m_Sim == nullptr)
+		return;
 
 	if (m_Changed)
 	{
@@ -60,8 +62,9 @@ void ImGuiViewer::OnEndFrame()
 }
 void ImGuiViewer::OnStartFrame()
 {
-	// TODO: ASSERT m_Sim != nullptr
 	std::lock_guard<std::mutex> lock(m_Mutex);
+	if (m_Sim == nullptr)
+		return;
 
 	m_SimParams = m_Sim->GetParams();
 
