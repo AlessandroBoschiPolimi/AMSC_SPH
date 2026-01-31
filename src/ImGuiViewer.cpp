@@ -82,12 +82,14 @@ void ImGuiViewer::DrawStatsWindow() {
 		m_Changed |= ImGui::SliderFloat("Rest Density", &m_SimParams.RestDensity, 500      , 1500     , "%.5f");
 		m_Changed |= ImGui::SliderFloat("Stiffness"   , &m_SimParams.Stiffness  ,   0      , 5000     , "%.5f");
 		m_Changed |= ImGui::SliderFloat("Viscosity"   , &m_SimParams.Viscosity  ,   0      ,    1     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("dt"          , &m_SimParams.TimeStep   ,   0.0001f,    0.005f, "%.5f");
+		m_Changed |= ImGui::SliderFloat("dt"          , &m_SimParams.TimeStep   ,   0.0000f,    0.005f, "%.5f");
 		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength,   0.0001f,    0.5f, "%.5f");
 
 		ImGui::Text("Particles: %d", m_Particles.size());
 		ImGui::Text("UI  FPS: %.1f", ImGui::GetIO().Framerate);
 		ImGui::Text("SPH FPS: %.1f", m_SimFPS);
+		if (!m_Particles.empty())
+			ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
 
 		const char* items[] = { "Subdomain", "Pressure" };
 		static int coloring_param_int = 0;

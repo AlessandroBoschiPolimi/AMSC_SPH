@@ -7,7 +7,7 @@
 class SPHSimulation
 {
 public:
-	using idx_t = u32;
+	using idx_t = Particle::idx_t;
 	using cell_t = std::vector<idx_t>; // particle indices
 	using cell_pos_t = coord<int, 2>;
 	using grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<2>>;
@@ -18,7 +18,7 @@ public:
 		float RestDensity = 1000.0f;
 		float Stiffness = 0.001f;
 		float Viscosity = 0.0003;
-		float TimeStep = 0.001f;
+		float TimeStep = 0.0001f;
 		float SmoothingLength = 0.012f;
 		float PressureTol = 1e-2f;
 	};

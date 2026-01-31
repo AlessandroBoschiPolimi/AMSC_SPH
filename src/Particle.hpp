@@ -1,10 +1,10 @@
 #pragma once
 #include "Utility.hpp"
 
-enum ParticleType
+enum ParticleType : u8
 {
-FLUID,
-SOLID
+	FLUID,
+	SOLID
 };
 
 struct Particle
