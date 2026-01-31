@@ -16,11 +16,11 @@ public:
 	struct Params
 	{
 		float RestDensity = 1000.0f;
-		float Stiffness = 2.0f*1e9f;
-		float Viscosity = 1e-5f;
+		float Stiffness = 0.001f;
+		float Viscosity = 0.0003;
 		float TimeStep = 0.001f;
-		float SmoothingLength = 0.009f;
-		float PressureTol = 1e-1f;
+		float SmoothingLength = 0.012f;
+		float PressureTol = 1e-2f;
 	};
 
 public:

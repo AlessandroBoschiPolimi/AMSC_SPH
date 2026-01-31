@@ -23,13 +23,15 @@ SPHSimulation::SPHSimulation():
 			m_Particles.push_back(p);
 		}
 	}
-	for (int i = 0; i < 4; i++)
-	{
-		BuildXWall(80 -0.1 * i, maxx, maxy, 0, maxx);
-		BuildXWall(20 - 0.1 * i, maxx, maxy, 0, maxx);
-		BuildYWall(0.1 * i, maxx, maxy, 20, 80);
-		BuildYWall(maxx - 0.1 * i, maxx, maxy, 20, 80);
-	}
+	float pos1 = 20.0f;
+	float pos2 = 80.0f;
+//	for (int i = 0; i < 2; i++)
+//	{
+//		BuildXWall(pos1 -0.1 * i, maxx, maxy, 0, maxx);
+//		BuildXWall(pos2 - 0.1 * i, maxx, maxy, 0, maxx);
+//		BuildYWall(0.1 * i, maxx, maxy, pos1, pos2);
+//		BuildYWall(maxx - 0.1 * i, maxx, maxy, pos1, pos2);
+//	}
 }
 void SPHSimulation::BuildXWall(float y, float maxx, float maxy, float begin, float end)
 {	
@@ -147,7 +149,7 @@ void SPHSimulation::Initialize(int step_num)
 	 * Apply this and gravity force to all the particles
 	 * In the first step, we also need to initialize density
 	 */
-	if (step_num == 1)
+	if (step_num == 0)
 	{
 		for (int i = 0; i < m_Particles.size(); i++)
 			ComputeDensity(i);
@@ -176,7 +178,7 @@ void SPHSimulation::IterativePressure()
 			float old_dens = m_Particles[i].Density;
 			ComputeDensity(i);
 			float new_dens = m_Particles[i].Density;
-			float curr_error = std::abs(new_dens - old_dens);
+			float curr_error = std::abs((new_dens - old_dens) / old_dens);
 			if (curr_error > error)
 				error = curr_error;
 			ComputePressure(i);
@@ -219,8 +221,9 @@ void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 		float denominator = m_Particles[j].Density * (Dot(x_ij, x_ij) + 
 					0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
 		m_Particles[i].A_visc = m_Particles[i].A_visc + 
-					2 * m_Params.Viscosity *
-					(numerator / denominator) * v_ij;
+					(2 * m_Params.Viscosity *
+					(numerator / denominator)) * v_ij;
+
 	}
 }
 
@@ -233,11 +236,10 @@ void SPHSimulation::ComputeAccelerationPressure(idx_t i)
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		m_Particles[i].A_press = m_Particles[i].A_press -
 				m_Particles[j].Mass * 
-				(m_Particles[j].Pressure / m_Particles[j].Density / m_Particles[j].Density +
-				m_Particles[i].Pressure / m_Particles[i].Density / m_Particles[i].Density) *
+				(m_Particles[j].Pressure / (m_Particles[j].Density * m_Particles[j].Density) +
+				m_Particles[i].Pressure / (m_Particles[i].Density * m_Particles[i].Density)) *
 				DW_ij;
 	}
-	m_Particles[i].A_press =  m_Particles[i].A_press;
 }
 
 void SPHSimulation::UpdatePositionInitial(idx_t i)
