@@ -1,6 +1,12 @@
 #pragma once
 #include "Utility.hpp"
 
+enum ParticleType
+{
+FLUID,
+SOLID
+};
+
 struct Particle
 {
 	using vec_t = coord<float, 2>;
@@ -14,4 +20,5 @@ struct Particle
 	float Density;
 	float Pressure;
 	std::vector<idx_t> Neighbors;
+	ParticleType Type;
 };

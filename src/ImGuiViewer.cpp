@@ -122,7 +122,15 @@ void ImGuiViewer::DrawVisualizationWindow() {
 		ImVec2 pos = worldToScreen(p.Position);
 		float r = 2.0f;
 		ImU32 color = ImColor::HSV(1.0f, 1.0f, 1.0f);
-
+		if (p.Type == SOLID){
+			color = ImColor::HSV(
+				0.0f, // blue -> red
+				0.0f,
+				1.0f
+			);
+			drawList->AddCircleFilled(pos, r, color);
+			continue;
+		}
 		if (m_ColoringParam == PRESSURE)
 		{
 			float d = p.Density;

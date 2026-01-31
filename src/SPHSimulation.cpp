@@ -9,11 +9,12 @@ SPHSimulation::SPHSimulation():
 	int maxx = 100, maxy = 100;
 	vec_t vertical_direction{0, -1};
 	vec_t zero_direction{0, 0};
-	for (int x = 0; x < maxx; x++)
+	for (int x = 2; x < maxx / 2; x++)
 	{
-		for (int y = 0; y < maxy; y++)
+		for (int y = 30; y < 60 ; y++)
 		{
 			Particle p;
+			p.Type = FLUID;
 			p.Position.y = float(y) / maxy;
 			p.Position.x = float(x) / maxx;
 			p.Velocity = zero_direction;
@@ -22,8 +23,49 @@ SPHSimulation::SPHSimulation():
 			m_Particles.push_back(p);
 		}
 	}
+	for (int i = 0; i < 4; i++)
+	{
+		BuildXWall(80 -0.1 * i, maxx, maxy, 0, maxx);
+		BuildXWall(20 - 0.1 * i, maxx, maxy, 0, maxx);
+		BuildYWall(0.1 * i, maxx, maxy, 20, 80);
+		BuildYWall(maxx - 0.1 * i, maxx, maxy, 20, 80);
+	}
+}
+void SPHSimulation::BuildXWall(float y, float maxx, float maxy, float begin, float end)
+{	
+	/*
+	 * Builds a wall of SOLID particles at position y
+	 */
+	for (int x = begin; x <= end; x++)
+			{
+					Particle p;
+					p.Type = SOLID;
+					p.Position.y = float(y) / maxy;
+					p.Position.x = float(x) / maxx;
+					p.Mass = 0.1f;
+					m_Particles.push_back(p);
+			}
+
+
 }
 
+void SPHSimulation::BuildYWall(float x, float maxx, float maxy, float begin, float end)
+{	
+	/*
+	 * Builds a wall of SOLID particles at position x
+	 */
+	for (int y = begin; y <= end; y++)
+			{
+					Particle p;
+					p.Type = SOLID;
+					p.Position.y = float(y) / maxy;
+					p.Position.x = float(x) / maxx;
+					p.Mass = 0.1f;
+					m_Particles.push_back(p);
+			}
+
+
+}
 
 void SPHSimulation::Start()
 {
@@ -112,9 +154,11 @@ void SPHSimulation::Initialize(int step_num)
 	}
 	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		ComputeAccelerationViscosity(i);
-		UpdateVelocityInitial(i);
-		UpdatePositionInitial(i);
+		if (m_Particles[i].Type == FLUID){
+			ComputeAccelerationViscosity(i);
+			UpdateVelocityInitial(i);
+			UpdatePositionInitial(i);
+		}
 	}
 }
 void SPHSimulation::IterativePressure()
@@ -136,9 +180,11 @@ void SPHSimulation::IterativePressure()
 			if (curr_error > error)
 				error = curr_error;
 			ComputePressure(i);
-			ComputeAccelerationPressure(i);
-			UpdateVelocityIteration(i);
-			UpdatePositionIteration(i);
+			if (m_Particles[i].Type == FLUID){
+				ComputeAccelerationPressure(i);
+				UpdateVelocityIteration(i);
+				UpdatePositionIteration(i);
+			}
 		}
 	}
 }

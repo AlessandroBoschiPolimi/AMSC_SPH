@@ -19,7 +19,7 @@ public:
 		float Stiffness = 2.0f*1e9f;
 		float Viscosity = 1e-5f;
 		float TimeStep = 0.001f;
-		float SmoothingLength = 0.001f;
+		float SmoothingLength = 0.009f;
 		float PressureTol = 1e-1f;
 	};
 
@@ -37,6 +37,9 @@ public:
 
 
 private:
+	void BuildYWall(float x, float maxx, float maxy, float begin, float end);
+	void BuildXWall(float y, float maxx, float maxy, float begin, float end);
+
 	void Step(int step_num);
 
 
