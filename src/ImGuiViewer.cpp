@@ -72,34 +72,82 @@ void ImGuiViewer::OnStartFrame()
 }
 
 
+static float Lerp(float a, float b, float t)
+{
+	return a + (b - a) * t;
+}
+static void DrawLegend(ImVec2 size)
+{
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+	ImVec2 p0 = ImGui::GetCursorScreenPos();
+	ImVec2 p1 = ImVec2(p0.x + size.x, p0.y + size.y);
 
-void ImGuiViewer::DrawStatsWindow() {
+	const int steps = 100; // more = smoother
+
+	for (int i = 0; i < steps; ++i)
+	{
+		float t0 = (float)i / steps;
+		float t1 = (float)(i + 1) / steps;
+
+		// Long-way hue interpolation: 2/3 -> 0
+		float h0 = (2.0f / 3.0f) * (1.0f - t0);
+		float h1 = (2.0f / 3.0f) * (1.0f - t1);
+
+		ImU32 c0 = ImColor::HSV(h0, 1.0f, 1.0f);
+		ImU32 c1 = ImColor::HSV(h1, 1.0f, 1.0f);
+
+		float x0 = Lerp(p0.x, p1.x, t0);
+		float x1 = Lerp(p0.x, p1.x, t1);
+
+		draw_list->AddRectFilledMultiColor(
+			ImVec2(x0, p0.y),
+			ImVec2(x1, p1.y),
+			c0, c1, c1, c0
+		);
+	}
+
+	// Advance layout cursor
+	ImGui::Dummy(size);
+}
+
+
+void ImGuiViewer::DrawStatsWindow()
+{
 	ImGui::Begin("SPH Stats");
 
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 
-		m_Changed |= ImGui::SliderFloat("Rest Density", &m_SimParams.RestDensity, 500      , 1500     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("Stiffness"   , &m_SimParams.Stiffness  ,   0      , 5000     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("Viscosity"   , &m_SimParams.Viscosity  ,   0      ,    1     , "%.5f");
-		m_Changed |= ImGui::SliderFloat("dt"          , &m_SimParams.TimeStep   ,   0.0000f,    0.005f, "%.5f");
-		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength,   0.0001f,    0.5f, "%.5f");
+		m_Changed |= ImGui::SliderFloat("Rest Density"    , &m_SimParams.RestDensity    , 500      ,   1500       , "%.0f");
+		m_Changed |= ImGui::SliderFloat("Stiffness"       , &m_SimParams.Stiffness      ,   0      ,      1       , "%.5f");
+		m_Changed |= ImGui::SliderFloat("Viscosity"       , &m_SimParams.Viscosity      ,   0      ,      1       , "%.5f");
+		m_Changed |= ImGui::SliderFloat("dt"              , &m_SimParams.TimeStep       ,   0.0000f,      0.00005f, "%.7f");
+		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength,   0.0001f,      0.5f    , "%.7f");
+		
+		ImGui::SliderFloat("Max UI Velocity" , &m_MaxVelocity              ,   0      ,     30       , "%.5f");
+		ImGui::SliderFloat("Max UI Pressure" , &m_MaxPressure              ,   0      , 100000       , "%.0f");
 
 		ImGui::Text("Particles: %d", m_Particles.size());
 		ImGui::Text("UI  FPS: %.1f", ImGui::GetIO().Framerate);
 		ImGui::Text("SPH FPS: %.1f", m_SimFPS);
 		if (!m_Particles.empty())
+		{
 			ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
+			ImGui::Text("Velocity: %.3f %.3f", m_Particles[0].Velocity.x, m_Particles[0].Velocity.y);
+		}
 
-		const char* items[] = { "Subdomain", "Pressure" };
-		static int coloring_param_int = 0;
+		const char* items[] = { "Subdomain", "Pressure", "Velocity" };
+		static int coloring_param_int = 2;
 		ImGui::Combo("Coloring Parameter", &coloring_param_int, items, IM_ARRAYSIZE(items));
 		m_ColoringParam = (ColoringParam)coloring_param_int;
+
+		DrawLegend(ImVec2(200.0f, 16.0f));
 	}
 
 	ImGui::End();
 }
-void ImGuiViewer::DrawVisualizationWindow() {
+void ImGuiViewer::DrawVisualizationWindow()
+{
 	ImGui::Begin("Fluid");
 
 	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
@@ -125,25 +173,22 @@ void ImGuiViewer::DrawVisualizationWindow() {
 	// Draw particles
 	for (const auto& p : m_Particles) {
 		ImVec2 pos = worldToScreen(p.Position);
-		float r = 2.0f;
+		float r = m_SimParams.SmoothingLength * 100;
 		ImU32 color = ImColor::HSV(1.0f, 1.0f, 1.0f);
-		if (p.Type == SOLID){
+
+		if (p.Type == SOLID)
+		{
 			color = ImColor::HSV(
 				0.0f, // blue -> red
 				0.0f,
 				1.0f
 			);
-			drawList->AddCircleFilled(pos, r, color);
-			continue;
 		}
-		if (m_ColoringParam == PRESSURE)
+		else if (m_ColoringParam == PRESSURE)
 		{
-			float d = p.Density;
-			float t = (d - 0.1) / (1.0 - 0.1);
-			t = std::clamp(t, 0.0f, 1.0f);
-
+			float t = std::clamp(p.Pressure / m_MaxPressure, 0.0f, 1.0f);
 			color = ImColor::HSV(
-				0.6f - 0.6f * t, // blue -> red
+				0.66f - 0.66f * t, // blue -> red
 				1.0f,
 				1.0f
 			);
@@ -152,8 +197,18 @@ void ImGuiViewer::DrawVisualizationWindow() {
 		{
 			SPHSimulation::cell_pos_t cell_pos = SPHSimulation::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
 			color = ImColor::HSV(
-				1.0f - cell_pos.x * 0.1,
-				1.0f - cell_pos.y * 0.1,
+				1.0f - cell_pos.x * m_SimParams.SmoothingLength,
+				1.0f - cell_pos.y * m_SimParams.SmoothingLength,
+				1.0f
+			);
+		}
+		else if (m_ColoringParam == VELOCITY)
+		{
+			float t = std::sqrt(p.Velocity.x * p.Velocity.x + p.Velocity.y * p.Velocity.y);
+			t = std::clamp(t / m_MaxVelocity, 0.0f, 1.0f);
+			color = ImColor::HSV(
+				0.66f - 0.66f * t, // blue -> red
+				1.0f,
 				1.0f
 			);
 		}

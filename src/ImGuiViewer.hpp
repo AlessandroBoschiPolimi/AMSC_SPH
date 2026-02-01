@@ -57,12 +57,13 @@ private:
 
 	float m_SimFPS = 0;
 	stdc::time_point<stdclock> m_SimFrameStart;
+	float m_MaxVelocity = 10, m_MaxPressure = 50000;
 
 	SPHSimulation::Params m_SimParams;
 
 	enum ColoringParam
 	{
-		SUBDOMAIN, PRESSURE
+		SUBDOMAIN, PRESSURE, VELOCITY
 	};
-	ColoringParam m_ColoringParam = SUBDOMAIN;
+	ColoringParam m_ColoringParam = VELOCITY;
 };
