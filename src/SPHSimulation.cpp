@@ -98,7 +98,7 @@ void SPHSimulation::Step(int step_num)
 
 void SPHSimulation::BuildGrid()
 {
-	//We have to clear Grid at each timestep to avoid cummulation of neighburs
+	// We have to clear Grid at each timestep to avoid cummulation of neighbors
 	m_Grid.clear();
 	m_Grid.reserve(m_Particles.size());
 
@@ -173,13 +173,12 @@ void SPHSimulation::Initialize(int step_num)
 	 * In the first step, we also need to initialize density
 	 */
 	for (int i = 0; i < m_Particles.size(); i++)
-		{
-			if (m_Particles[i].Type == SOLID)
-				ComputeBoundaryPsi(i);
-   	 	}
+	{
+		if (m_Particles[i].Type == SOLID)
+			ComputeBoundaryPsi(i);
+	}
 	if (step_num == 0)
-	{	
-		
+	{
 		for (int i = 0; i < m_Particles.size(); i++)
 		{
 			if (m_Particles[i].Type == FLUID)
@@ -194,7 +193,7 @@ void SPHSimulation::Initialize(int step_num)
 	}
 	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		if (m_Particles[i].Type == FLUID){
+		if (m_Particles[i].Type == FLUID) {
 			UpdateVelocityInitial(i);
 			UpdatePositionInitial(i);
 		}
@@ -207,19 +206,19 @@ void SPHSimulation::IterativePressure()
 	 * After computing initial forces and moving particles, compute dansity and pressure 
 	   and move particles again.
 	 */
-		for (int i = 0; i < m_Particles.size(); i++){
-			if (m_Particles[i].Type == SOLID)
-				continue;
-			ComputeDensity(i);
-			ComputePressure(i);
-			ComputeAccelerationPressure(i);
-		}
-		for (int i = 0; i < m_Particles.size(); i++){
-			if (m_Particles[i].Type == SOLID)
-				continue;
-			UpdateVelocityIteration(i);
-			UpdatePositionIteration(i);
-		}
+	for (int i = 0; i < m_Particles.size(); i++){
+		if (m_Particles[i].Type == SOLID)
+			continue;
+		ComputeDensity(i);
+		ComputePressure(i);
+		ComputeAccelerationPressure(i);
+	}
+	for (int i = 0; i < m_Particles.size(); i++){
+		if (m_Particles[i].Type == SOLID)
+			continue;
+		UpdateVelocityIteration(i);
+		UpdatePositionIteration(i);
+	}
 }
 
 void SPHSimulation::ComputeBoundaryPsi(idx_t i)
@@ -246,7 +245,7 @@ void SPHSimulation::ComputeDensity(idx_t i)
 	 */
 	m_Particles[i].Density = m_Particles[i].Mass * W_Ker.GetValue(m_Particles[i], m_Particles[i]);
 	m_Particles[i].Density = 0.0f;
-	for (auto &j: m_Particles[i].Neighbors){
+	for (auto &j: m_Particles[i].Neighbors) {
 		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
 		if (m_Particles[j].Type == FLUID)
 		{
@@ -260,7 +259,7 @@ void SPHSimulation::ComputeDensity(idx_t i)
 	}
 	m_Particles[i].Density =
 	std::max(m_Particles[i].Density,
-	         0.1f * m_Params.RestDensity);
+			 0.1f * m_Params.RestDensity);
 }
 
 void SPHSimulation::ComputePressure(idx_t i)
@@ -304,8 +303,8 @@ void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 			m_Particles[i].A_visc = m_Particles[i].A_visc + 
 						( m_Params.ViscosityRigid *
 						(numerator / denominator)) *
-					       	m_Particles[j].BoundaryPsi *
-					       	DW_ij;
+							m_Particles[j].BoundaryPsi *
+							DW_ij;
 		}
 	}
 }
