@@ -1,54 +1,58 @@
 #include "SPHSimulation.hpp"
 
 #define G_CONSTANT 9.81f
-
+/* References:
+ * [1]https://cg.informatik.uni-freiburg.de/publications/2012_SIGGRAPH_rigidFluidCoupling.pdfa
+ * [2]https://cg.informatik.uni-freiburg.de/course_notes/sim_10_sph.pdf
+ */
 
 SPHSimulation::SPHSimulation():
 	W_Ker(m_Params.SmoothingLength)
 {
+	//Setup for ''Dam breaking''
 	int maxx = 100, maxy = 100;
 	vec_t vertical_direction{0, -1};
 	vec_t zero_direction{0, 0};
-	for (int x = 1; x < maxx / 2; x++)
+	for (float x = 2; x < maxx / 2; x+= 0.5)
 	{
-		for (int y = 5; y < maxy / 2; y++)
+		for (float y = 28; y < 78 ; y+= 0.5)
 		{
 			Particle p;
 			p.Type = FLUID;
 			p.Position.y = float(y) / maxy;
 			p.Position.x = float(x) / maxx;
 			p.Velocity = zero_direction;
-			p.Mass = 0.1f;
+			//Arbitrary Mass to match with other constants
+			p.Mass = 0.5f;
 			p.A_grav = G_CONSTANT * vertical_direction;
 			m_Particles.push_back(p);
 		}
 	}
-	float pos1 = 20.0f;
+	float pos1 = 25.0f;
 	float pos2 = 80.0f;
-	
-	BuildXWall(0.99, maxx, maxy, 0, maxx);
+	//Create multiple walls of the box to avoid leaks
+	//TODO: Add walls options to properties
+	for (int i = 0; i < 5; i++)
+	{
+		BuildXWall(pos1 - m_Params.SmoothingLength / 4      * i, maxx, maxy, 0, maxx);
+		BuildXWall(pos2 - m_Params.SmoothingLength / 4     * i, maxx, maxy, 0, maxx);
+		BuildYWall( m_Params.SmoothingLength / 4    * i, maxx, maxy, pos1, pos2);
+		BuildYWall(maxx - m_Params.SmoothingLength / 4     * i, maxx, maxy, pos1, pos2);
+	}
 
-
-//	for (int i = 0; i < 2; i++)
-//	{
-//		BuildXWall(pos1 -0.1 * i, maxx, maxy, 0, maxx);
-//		BuildXWall(pos2 - 0.1 * i, maxx, maxy, 0, maxx);
-//		BuildYWall(0.1 * i, maxx, maxy, pos1, pos2);
-//		BuildYWall(maxx - 0.1 * i, maxx, maxy, pos1, pos2);
-//	}
 }
 void SPHSimulation::BuildXWall(float y, float maxx, float maxy, float begin, float end)
 {	
 	/*
 	 * Builds a wall of SOLID particles at position y
 	 */
-	for (int x = begin; x <= end; x++)
+	for (float x = begin; x <= end; x+=0.25)
 	{
 		Particle p;
 		p.Type = SOLID;
 		p.Position.y = float(y) / maxy;
 		p.Position.x = float(x) / maxx;
-		p.Mass = 0.1f;
+		p.Velocity = vec_t{0.0f, 0.0f};
 		m_Particles.push_back(p);
 	}
 }
@@ -58,13 +62,13 @@ void SPHSimulation::BuildYWall(float x, float maxx, float maxy, float begin, flo
 	/*
 	 * Builds a wall of SOLID particles at position x
 	 */
-	for (int y = begin; y <= end; y++)
+	for (float y = begin; y <= end; y+=0.25)
 	{
 		Particle p;
 		p.Type = SOLID;
 		p.Position.y = float(y) / maxy;
 		p.Position.x = float(x) / maxx;
-		p.Mass = 0.1f;
+		p.Velocity = vec_t{0.0f, 0.0f};
 		m_Particles.push_back(p);
 	}
 }
@@ -72,7 +76,7 @@ void SPHSimulation::BuildYWall(float x, float maxx, float maxy, float begin, flo
 void SPHSimulation::Start()
 {
 	// TODO: Specify final timestep, and display in the ui the current progress (percentage and value)
-	for (int i = 0; i < 10000; i++) {
+	for (int i = 0; i < 400000; i++){
 		Step(i);
 	}
 }
@@ -94,6 +98,7 @@ void SPHSimulation::Step(int step_num)
 
 void SPHSimulation::BuildGrid()
 {
+	//We have to clear Grid at each timestep to avoid cummulation of neighburs
 	m_Grid.clear();
 	m_Grid.reserve(m_Particles.size());
 
@@ -129,13 +134,12 @@ void SPHSimulation::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 	*/
 
 	// TODO: maybe reserve out to the number of particles / number of cells.
+	// Same as above with grid
 	out.clear();
-
 	float h = m_Params.SmoothingLength;
 	float h2 = h * h;
 
 	cell_pos_t base = GetCellPosition(m_Particles[i].Position, m_Params.SmoothingLength);
-
 	for (const cell_pos_t& off : neighborOffsets)
 	{
 		cell_pos_t c = base + off;
@@ -165,17 +169,32 @@ void SPHSimulation::Initialize(int step_num)
 	 * Non-iterative part of the timestep
 	 * In each timestep, set initial force due to Viscosity
 	 * Apply this and gravity force to all the particles
+	 * Additionally, we need to compute 'Mass' of boundary particles (ParticlePsi) 
 	 * In the first step, we also need to initialize density
 	 */
+	for (int i = 0; i < m_Particles.size(); i++)
+		{
+			if (m_Particles[i].Type == SOLID)
+				ComputeBoundaryPsi(i);
+   	 	}
 	if (step_num == 0)
-	{
+	{	
+		
 		for (int i = 0; i < m_Particles.size(); i++)
-			ComputeDensity(i);
+		{
+			if (m_Particles[i].Type == FLUID)
+				ComputeDensity(i);
+		}
 	}
 	for (int i = 0; i < m_Particles.size(); i++)
 	{
 		if (m_Particles[i].Type == FLUID) {
 			ComputeAccelerationViscosity(i);
+		}
+	}
+	for (int i = 0; i < m_Particles.size(); i++)
+	{
+		if (m_Particles[i].Type == FLUID){
 			UpdateVelocityInitial(i);
 			UpdatePositionInitial(i);
 		}
@@ -184,85 +203,129 @@ void SPHSimulation::Initialize(int step_num)
 void SPHSimulation::IterativePressure()
 {
 	/*
-	 * Use iterative SESPH scheme with splitting, Presentation p. 121
-	 * Recompute pressure and density multiple times until 
-	 * the || rho_old - rho_new ||_max < err (user defined error)
-	 * Unce scheem converges, keep the updated position end velocity
+	 * Use simple scheme with splitting
+	 * After computing initial forces and moving particles, compute dansity and pressure 
+	   and move particles again.
 	 */
-	float error = 2 * m_Params.PressureTol;
-	while (error > m_Params.PressureTol)
-	{
-		error = 0;
-		for (int i = 0; i < m_Particles.size(); i++)
-		{
-			float old_dens = m_Particles[i].Density;
+		for (int i = 0; i < m_Particles.size(); i++){
+			if (m_Particles[i].Type == SOLID)
+				continue;
 			ComputeDensity(i);
-			float new_dens = m_Particles[i].Density;
-			float curr_error = std::abs((new_dens - old_dens) / old_dens);
-			if (curr_error > error)
-				error = curr_error;
 			ComputePressure(i);
+			ComputeAccelerationPressure(i);
 		}
-
-		for (int i = 0; i < m_Particles.size(); i++)
-		{
-			if (m_Particles[i].Type == FLUID) {
-				ComputeAccelerationPressure(i);
-				UpdateVelocityIteration(i);
-				UpdatePositionIteration(i);
-			}
+		for (int i = 0; i < m_Particles.size(); i++){
+			if (m_Particles[i].Type == SOLID)
+				continue;
+			UpdateVelocityIteration(i);
+			UpdatePositionIteration(i);
 		}
-	}
 }
 
+void SPHSimulation::ComputeBoundaryPsi(idx_t i)
+{
+	/*
+	 * Computes 'mass' of the boundary particles used
+	   to implement collisions
+	 */
+	float V = 0;
+	for (auto &j : m_Particles[i].Neighbors)
+	{
+		if (m_Particles[j].Type == FLUID)
+			V += W_Ker.GetValue(m_Particles[i], m_Particles[j]);
+	}
+	//Clamp the values in case the volume is too small
+	m_Particles[i].BoundaryPsi =  (V > 1e2) ?  m_Params.RestDensity / V : 0;
+}
 void SPHSimulation::ComputeDensity(idx_t i)
 {
-	m_Particles[i].Density = 0;
-	for (auto &j: m_Particles[i].Neighbors)
-	{
+	/*
+	 * Simple function to compute density
+	 * Takes initial value of density produced by itself
+	 * For security, clamps the value in the end to avoid disappearing particles
+	 */
+	m_Particles[i].Density = m_Particles[i].Mass * W_Ker.GetValue(m_Particles[i], m_Particles[i]);
+	m_Particles[i].Density = 0.0f;
+	for (auto &j: m_Particles[i].Neighbors){
 		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
-		m_Particles[i].Density +=  m_Particles[j].Mass* W_ij;
+		if (m_Particles[j].Type == FLUID)
+		{
+			m_Particles[i].Density +=  m_Particles[j].Mass* W_ij;
+		}
+		//Boundary handling
+		else
+		{
+			m_Particles[i].Density +=  m_Particles[j].BoundaryPsi * W_ij;
+		}
 	}
+	m_Particles[i].Density =
+	std::max(m_Particles[i].Density,
+	         0.1f * m_Params.RestDensity);
 }
 
 void SPHSimulation::ComputePressure(idx_t i)
 {
-	//Calculate pressure from state equation, Presentation p. 121
-	//Stiffness constant is user defined
-	m_Particles[i].Pressure = m_Params.Stiffness *
-				(m_Particles[i].Density -
-				m_Params.RestDensity);
+	/*
+	 * (Andrew) Tait equation
+	 * Stiffness constant is user defined
+	 */
+	m_Particles[i].Pressure =  m_Params.Stiffness *
+				(std::pow(m_Particles[i].Density /
+				m_Params.RestDensity, 7.0f) - 1);
 }
 
 void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 {
-	//Compute acceleration due to viscosity, Presentation p. 102
+	/*
+	 * Computes acceleration dues to viscosity from [1]
+	 * [2] has typos in that formula
+	 */
 	m_Particles[i].A_visc = vec_t{0, 0};
 	for (auto &j: m_Particles[i].Neighbors)
 	{
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		vec_t v_ij = m_Particles[i].Velocity - m_Particles[j].Velocity;
 		vec_t x_ij = m_Particles[i].Position - m_Particles[j].Position;
-		float numerator	= m_Particles[j].Mass * Dot(x_ij, DW_ij);
-		float denominator = m_Particles[j].Density * (Dot(x_ij, x_ij) + 
-					0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
-		m_Particles[i].A_visc = m_Particles[i].A_visc + 
-					(2 * m_Params.Viscosity *
-					(numerator / denominator)) * v_ij;
+		float prod = Dot(x_ij, v_ij);
+		float numerator	=  ((prod > 0) ? prod : 0) ;
+		if (m_Particles[j].Type == FLUID)
+		{
+			numerator *= m_Particles[j].Mass;
+			float denominator = (m_Particles[i].Density + m_Particles[j].Density) *(Dot(x_ij, x_ij) + 
+						0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
+			m_Particles[i].A_visc = m_Particles[i].A_visc + 
+						(2 * m_Params.Viscosity *
+						(numerator / denominator)) * DW_ij;
+		}
+		else
+		{
+			float denominator = 2 * m_Particles[i].Density * (Dot(x_ij, x_ij) + 
+						0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
+			m_Particles[i].A_visc = m_Particles[i].A_visc + 
+						( m_Params.ViscosityRigid *
+						(numerator / denominator)) *
+					       	m_Particles[j].BoundaryPsi *
+					       	DW_ij;
+		}
 	}
 }
 
 void SPHSimulation::ComputeAccelerationPressure(idx_t i)
 {
-	//Compute acceleration due to pressure, Presentation p. 102
+	/*
+	 * Computes acceleration dues to viscosity from [2]
+	 * Boundary handling according to [2]
+	 */
 	m_Particles[i].A_press = vec_t{0, 0};
 	for (auto &j : m_Particles[i].Neighbors)
 	{
+		float factor = (m_Particles[j].Type == SOLID) ? ( m_Particles[j].BoundaryPsi)  : m_Particles[j].Mass;
+		idx_t z = (m_Particles[j].Type == SOLID) ? i : j;
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		m_Particles[i].A_press = m_Particles[i].A_press -
-				m_Particles[j].Mass * 
-				(m_Particles[j].Pressure / (m_Particles[j].Density * m_Particles[j].Density) +
-				m_Particles[i].Pressure / (m_Particles[i].Density * m_Particles[i].Density)) *
+				(m_Particles[i].Pressure / (m_Particles[i].Density * m_Particles[i].Density) +
+				m_Particles[z].Pressure / (m_Particles[z].Density * m_Particles[z].Density)) *
+				factor *
 				DW_ij;
 	}
 }

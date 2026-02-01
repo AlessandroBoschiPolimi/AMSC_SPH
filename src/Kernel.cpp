@@ -5,7 +5,7 @@
 Kernel::Kernel(float h_):
 	h(h_)
 {
-	alpha = 5.0f / (14.0f * std::numbers::pi * std::pow(h, 2));
+	alpha = 5.0f / (14.0f * M_PI * h * h);
 }
 
 float Kernel::GetValue(Particle &xi, Particle &xj) const

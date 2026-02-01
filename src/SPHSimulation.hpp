@@ -16,10 +16,11 @@ public:
 	struct Params
 	{
 		float RestDensity = 1000.0f;
-		float Stiffness = 0.001f;
-		float Viscosity = 0.0003;
-		float TimeStep = 0.0001f;
-		float SmoothingLength = 0.012f;
+		float Stiffness = 0.05f;
+		float Viscosity = 1e-2f;
+		float ViscosityRigid = 5e-2f;
+		float TimeStep = 0.00002f;
+		float SmoothingLength = 0.007f;
 		float PressureTol = 1e-2f;
 	};
 
@@ -49,6 +50,7 @@ private:
 	void Initialize(int step_num);
 	void IterativePressure();
 	//Helper functions for the subsequent particles
+	void ComputeBoundaryPsi(idx_t i);
 	void ComputeDensity(idx_t i);
 	void ComputePressure(idx_t i);
 	void ComputeAccelerationPressure(idx_t i);
@@ -87,7 +89,6 @@ public:
 	void SetViscosity      (float val) { m_Params.Viscosity       = val; }
 	void SetTimeStep       (float val) { m_Params.TimeStep        = val; }
 	void SetSmoothingLength(float val) { m_Params.SmoothingLength = val; }
-
 	Params GetParams() { return m_Params; }
 	float GetRestDensity    () const { return m_Params.RestDensity    ; }
 	float GetStiffness      () const { return m_Params.Stiffness      ; }
