@@ -1,45 +1,45 @@
 #include "SPHSimulation.hpp"
 
-#define G_CONSTANT 9.81f
+static constexpr float G_CONSTANT = 9.81f;
+
 /* References:
  * [1]https://cg.informatik.uni-freiburg.de/publications/2012_SIGGRAPH_rigidFluidCoupling.pdfa
  * [2]https://cg.informatik.uni-freiburg.de/course_notes/sim_10_sph.pdf
  */
 
-SPHSimulation::SPHSimulation():
-	W_Ker(m_Params.SmoothingLength)
+SPHSimulation::SPHSimulation() : W_Ker(m_Params.SmoothingLength)
 {
 	//Setup for ''Dam breaking''
 	int maxx = 100, maxy = 100;
 	vec_t vertical_direction{0, -1};
 	vec_t zero_direction{0, 0};
-	for (float x = 2; x < maxx / 2; x+= 0.5)
+	for (float x = 2; x < maxx / 2; x += 0.5)
 	{
-		for (float y = 28; y < 78 ; y+= 0.5)
+		for (float y = 28; y < 78 ; y += 0.5)
 		{
 			Particle p;
 			p.Type = FLUID;
 			p.Position.y = float(y) / maxy;
 			p.Position.x = float(x) / maxx;
 			p.Velocity = zero_direction;
-			//Arbitrary Mass to match with other constants
+			// Arbitrary Mass to match with other constants
 			p.Mass = 0.5f;
 			p.A_grav = G_CONSTANT * vertical_direction;
 			m_Particles.push_back(p);
 		}
 	}
+	
+	// Create multiple walls of the box to avoid leaks
+	// TODO: Add walls options to properties
 	float pos1 = 25.0f;
 	float pos2 = 80.0f;
-	//Create multiple walls of the box to avoid leaks
-	//TODO: Add walls options to properties
 	for (int i = 0; i < 5; i++)
 	{
-		BuildXWall(pos1 - m_Params.SmoothingLength / 4      * i, maxx, maxy, 0, maxx);
-		BuildXWall(pos2 - m_Params.SmoothingLength / 4     * i, maxx, maxy, 0, maxx);
-		BuildYWall( m_Params.SmoothingLength / 4    * i, maxx, maxy, pos1, pos2);
-		BuildYWall(maxx - m_Params.SmoothingLength / 4     * i, maxx, maxy, pos1, pos2);
+		BuildXWall(pos1 - m_Params.SmoothingLength / 4 * i, maxx, maxy, 0, maxx);
+		BuildXWall(pos2 - m_Params.SmoothingLength / 4 * i, maxx, maxy, 0, maxx);
+		BuildYWall(       m_Params.SmoothingLength / 4 * i, maxx, maxy, pos1, pos2);
+		BuildYWall(maxx - m_Params.SmoothingLength / 4 * i, maxx, maxy, pos1, pos2);
 	}
-
 }
 void SPHSimulation::BuildXWall(float y, float maxx, float maxy, float begin, float end)
 {	
@@ -88,7 +88,7 @@ void SPHSimulation::Step(int step_num)
 	BuildGrid();
 	FindAllNeighbors();
 	Initialize(step_num);
-	IterativePressure();	
+	IterativePressure();
 
 	m_Time += m_Params.TimeStep;
 	m_Frame++;
@@ -245,21 +245,19 @@ void SPHSimulation::ComputeDensity(idx_t i)
 	 */
 	m_Particles[i].Density = m_Particles[i].Mass * W_Ker.GetValue(m_Particles[i], m_Particles[i]);
 	m_Particles[i].Density = 0.0f;
-	for (auto &j: m_Particles[i].Neighbors) {
+	for (auto &j : m_Particles[i].Neighbors) {
 		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
 		if (m_Particles[j].Type == FLUID)
 		{
-			m_Particles[i].Density +=  m_Particles[j].Mass* W_ij;
+			m_Particles[i].Density += m_Particles[j].Mass * W_ij;
 		}
 		//Boundary handling
 		else
 		{
-			m_Particles[i].Density +=  m_Particles[j].BoundaryPsi * W_ij;
+			m_Particles[i].Density += m_Particles[j].BoundaryPsi * W_ij;
 		}
 	}
-	m_Particles[i].Density =
-	std::max(m_Particles[i].Density,
-			 0.1f * m_Params.RestDensity);
+	m_Particles[i].Density = std::max(m_Particles[i].Density, 0.1f * m_Params.RestDensity);
 }
 
 void SPHSimulation::ComputePressure(idx_t i)
@@ -280,31 +278,26 @@ void SPHSimulation::ComputeAccelerationViscosity(idx_t i)
 	 * [2] has typos in that formula
 	 */
 	m_Particles[i].A_visc = vec_t{0, 0};
-	for (auto &j: m_Particles[i].Neighbors)
+	for (auto &j : m_Particles[i].Neighbors)
 	{
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		vec_t v_ij = m_Particles[i].Velocity - m_Particles[j].Velocity;
 		vec_t x_ij = m_Particles[i].Position - m_Particles[j].Position;
 		float prod = Dot(x_ij, v_ij);
-		float numerator	=  ((prod > 0) ? prod : 0) ;
+		float numerator	= ((prod > 0) ? prod : 0) ;
 		if (m_Particles[j].Type == FLUID)
 		{
 			numerator *= m_Particles[j].Mass;
 			float denominator = (m_Particles[i].Density + m_Particles[j].Density) *(Dot(x_ij, x_ij) + 
 						0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
-			m_Particles[i].A_visc = m_Particles[i].A_visc + 
-						(2 * m_Params.Viscosity *
-						(numerator / denominator)) * DW_ij;
+			m_Particles[i].A_visc +=  (2 * m_Params.Viscosity * (numerator / denominator)) * DW_ij;
 		}
 		else
 		{
 			float denominator = 2 * m_Particles[i].Density * (Dot(x_ij, x_ij) + 
-						0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
-			m_Particles[i].A_visc = m_Particles[i].A_visc + 
-						( m_Params.ViscosityRigid *
-						(numerator / denominator)) *
-							m_Particles[j].BoundaryPsi *
-							DW_ij;
+						        0.01 * m_Params.SmoothingLength * m_Params.SmoothingLength);
+			m_Particles[i].A_visc += (m_Params.ViscosityRigid * (numerator / denominator)) *
+									  m_Particles[j].BoundaryPsi * DW_ij;
 		}
 	}
 }
@@ -318,10 +311,10 @@ void SPHSimulation::ComputeAccelerationPressure(idx_t i)
 	m_Particles[i].A_press = vec_t{0, 0};
 	for (auto &j : m_Particles[i].Neighbors)
 	{
-		float factor = (m_Particles[j].Type == SOLID) ? ( m_Particles[j].BoundaryPsi)  : m_Particles[j].Mass;
+		float factor = (m_Particles[j].Type == SOLID) ? (m_Particles[j].BoundaryPsi) : m_Particles[j].Mass;
 		idx_t z = (m_Particles[j].Type == SOLID) ? i : j;
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
-		m_Particles[i].A_press = m_Particles[i].A_press -
+		m_Particles[i].A_press -= 
 				(m_Particles[i].Pressure / (m_Particles[i].Density * m_Particles[i].Density) +
 				m_Particles[z].Pressure / (m_Particles[z].Density * m_Particles[z].Density)) *
 				factor *
@@ -332,14 +325,14 @@ void SPHSimulation::ComputeAccelerationPressure(idx_t i)
 void SPHSimulation::UpdatePositionInitial(idx_t i)
 {
 	//Update position due to viscosity and gravity
-	m_Particles[i].Position = m_Particles[i].Position +
+	m_Particles[i].Position +=
 				  m_Params.TimeStep *
 				  m_Particles[i].Velocity;
 }
 void SPHSimulation::UpdatePositionIteration(idx_t i)
 {
 	//Update position due to pressure
-	m_Particles[i].Position = m_Particles[i].Position +
+	m_Particles[i].Position +=
 				  m_Params.TimeStep *
 				  m_Params.TimeStep *
 				  m_Particles[i].A_press;
@@ -347,7 +340,7 @@ void SPHSimulation::UpdatePositionIteration(idx_t i)
 void SPHSimulation::UpdateVelocityInitial(idx_t i)
 {
 	//Update velocity due to viscosity and gravity
-	m_Particles[i].Velocity = m_Particles[i].Velocity +
+	m_Particles[i].Velocity += 
 				  m_Params.TimeStep *
 				  (m_Particles[i].A_grav +
 				  m_Particles[i].A_visc);
@@ -355,7 +348,7 @@ void SPHSimulation::UpdateVelocityInitial(idx_t i)
 void SPHSimulation::UpdateVelocityIteration(idx_t i)
 {
 	//Update velocity due to pressure
-	m_Particles[i].Velocity = m_Particles[i].Velocity +
+	m_Particles[i].Velocity +=
 				  m_Params.TimeStep *
 				  m_Particles[i].A_press;
 }

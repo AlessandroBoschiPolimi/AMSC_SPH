@@ -61,6 +61,14 @@ private:
 	void UpdateVelocityIteration(idx_t i);
 	/// Populates "out" with the neighbors of particle i-th
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
+	void MyTest();
+	void computeDensity();
+	void computePressure();
+	void computePressureForces();
+	void computeViscosityForces();
+	void addExternalForces();
+	void integrate();
+	void handleBoundaries();
 
 
 private:

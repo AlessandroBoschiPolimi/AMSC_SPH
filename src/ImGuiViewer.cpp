@@ -173,7 +173,7 @@ void ImGuiViewer::DrawVisualizationWindow()
 	// Draw particles
 	for (const auto& p : m_Particles) {
 		ImVec2 pos = worldToScreen(p.Position);
-		float r = m_SimParams.SmoothingLength * 100;
+		static constexpr float r = 2.0f;
 		ImU32 color = ImColor::HSV(1.0f, 1.0f, 1.0f);
 
 		if (p.Type == SOLID)
