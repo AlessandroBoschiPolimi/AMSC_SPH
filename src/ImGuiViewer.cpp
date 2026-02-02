@@ -33,6 +33,11 @@
 
 
 
+static ImVec2 WorldToScreen(const Particle::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize);
+static Particle::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
+
+
+
 void ImGuiViewer::Attach(SPHSimulation* sim)
 {
 	Observer::Attach(sim);
@@ -53,6 +58,7 @@ void ImGuiViewer::OnEndFrame()
 	if (m_Changed)
 	{
 		m_Sim->SetParams(m_SimParams);
+		m_Sim->ApplyCommand(m_Cmd);
 	}
 
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
@@ -135,6 +141,10 @@ void ImGuiViewer::DrawStatsWindow()
 			ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
 			ImGui::Text("Velocity: %.3f %.3f", m_Particles[0].Velocity.x, m_Particles[0].Velocity.y);
 		}
+		if (m_Cmd.Type != Command::NONE)
+			ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
+		else
+			ImGui::Text("Command: NONE");
 
 		const char* items[] = { "Subdomain", "Pressure", "Velocity" };
 		static int coloring_param_int = 2;
@@ -150,9 +160,29 @@ void ImGuiViewer::DrawVisualizationWindow()
 {
 	ImGui::Begin("Fluid");
 
-	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+	ImVec2 canvasPos  = ImGui::GetCursorScreenPos();
 	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 
+
+	// Click
+	ImVec2 mousePos = ImGui::GetMousePos();
+	vec_t worldPos  = ScreenToWorld(mousePos, canvasPos, canvasSize);
+
+	if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0)
+	{
+		m_Cmd.Type = Command::PRESSURE;
+		m_Cmd.Position = worldPos;
+		m_Cmd.Radius = 0.1;
+		m_Cmd.Strength = 300000;
+		m_Changed = true;
+	}
+	else if (m_Cmd.Type != Command::NONE)
+	{
+		m_Cmd.Type = Command::NONE;
+		m_Changed = true;
+	}
+
+	// Draw
 	ImDrawList* drawList = ImGui::GetWindowDrawList();
 
 	// Background
@@ -162,17 +192,9 @@ void ImGuiViewer::DrawVisualizationWindow()
 		IM_COL32(20, 20, 20, 255)
 	);
 
-	// World -> screen transform
-	auto worldToScreen = [&](const coord<float, 2>& p) {
-		return ImVec2(
-			canvasPos.x + p.x * canvasSize.x,
-			canvasPos.y + (1.0f - p.y) * canvasSize.y
-		);
-		};
-
 	// Draw particles
 	for (const auto& p : m_Particles) {
-		ImVec2 pos = worldToScreen(p.Position);
+		ImVec2 pos = WorldToScreen(p.Position, canvasPos, canvasSize);
 		static constexpr float r = 2.0f;
 		ImU32 color = ImColor::HSV(1.0f, 1.0f, 1.0f);
 
@@ -217,6 +239,20 @@ void ImGuiViewer::DrawVisualizationWindow()
 	}
 
 	ImGui::End();
+}
+
+
+static ImVec2 WorldToScreen(const Particle::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize) {
+	return ImVec2(
+		canvasPos.x + p.x * canvasSize.x,
+		canvasPos.y + (1.0f - p.y) * canvasSize.y
+	);
+}
+static Particle::vec_t ScreenToWorld(const ImVec2& mouse, const ImVec2 canvasPos, const ImVec2 canvasSize) {
+	return Particle::vec_t{
+		       to<float>(mouse.x - canvasPos.x) / canvasSize.x,
+		1.0f - to<float>(mouse.y - canvasPos.y) / canvasSize.y
+	};
 }
 
 
@@ -368,6 +404,8 @@ bool ImGuiViewer::Init()
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf");
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
 	//IM_ASSERT(font != nullptr);
+
+	io.ConfigWindowsMoveFromTitleBarOnly = true;
 
 	return true;
 }

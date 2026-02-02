@@ -4,6 +4,17 @@
 #include "Observer.hpp"
 #include "Kernel.hpp"
 
+struct Command {
+	enum CommandType {
+		NONE, PRESSURE
+	};
+
+	CommandType Type = NONE;
+	Particle::vec_t Position;
+	float Radius;
+	float Strength;
+};
+
 class SPHSimulation
 {
 public:
@@ -61,14 +72,8 @@ private:
 	void UpdateVelocityIteration(idx_t i);
 	/// Populates "out" with the neighbors of particle i-th
 	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
-	void MyTest();
-	void computeDensity();
-	void computePressure();
-	void computePressureForces();
-	void computeViscosityForces();
-	void addExternalForces();
-	void integrate();
-	void handleBoundaries();
+
+	void EvaluateCommand(idx_t i);
 
 
 private:
@@ -78,6 +83,7 @@ private:
 	float m_Time = 0.0f;
 
 	Params m_Params;
+	Command m_Command;
 
 
 	grid_t m_Grid;
@@ -97,7 +103,7 @@ public:
 	void SetViscosity      (float val) { m_Params.Viscosity       = val; }
 	void SetTimeStep       (float val) { m_Params.TimeStep        = val; }
 	void SetSmoothingLength(float val) { m_Params.SmoothingLength = val; }
-	Params GetParams() { return m_Params; }
+	Params GetParams() const { return m_Params; }
 	float GetRestDensity    () const { return m_Params.RestDensity    ; }
 	float GetStiffness      () const { return m_Params.Stiffness      ; }
 	float GetViscosity      () const { return m_Params.Viscosity      ; }
@@ -109,6 +115,8 @@ public:
 
 	float  GetTime()  const { return m_Time; }
 	size_t GetFrame() const { return m_Frame; }
+
+	void ApplyCommand(const Command& cmd) { m_Command = cmd; }
 
 
 private:

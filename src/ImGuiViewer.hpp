@@ -9,6 +9,8 @@ struct GLFWwindow;
 // TODO: Make singleton
 class ImGuiViewer : public Observer {
 public:
+	using vec_t = Particle::vec_t;
+
 	ImGuiViewer() = default;
 	~ImGuiViewer() override { Stop(); }
 
@@ -58,6 +60,7 @@ private:
 	float m_SimFPS = 0;
 	stdc::time_point<stdclock> m_SimFrameStart;
 	float m_MaxVelocity = 10, m_MaxPressure = 50000;
+	Command m_Cmd;
 
 	SPHSimulation::Params m_SimParams;
 

@@ -219,6 +219,12 @@ R Dot(const coord<T, 3>& a, const coord<T, 3>& b)
 {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y) + to<R>(a.z) * to<R>(b.z);
 }
+template <typename T, size_t D, typename R = T>
+R Norm(const coord<T, D>& a)
+{
+	return std::sqrt(Dot(a, a));
+}
+
 
 template <size_t D>
 struct CoordIntHash;

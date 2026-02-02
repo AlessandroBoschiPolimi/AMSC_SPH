@@ -206,14 +206,19 @@ void SPHSimulation::IterativePressure()
 	 * After computing initial forces and moving particles, compute dansity and pressure 
 	   and move particles again.
 	 */
-	for (int i = 0; i < m_Particles.size(); i++){
+	for (int i = 0; i < m_Particles.size(); i++) {
 		if (m_Particles[i].Type == SOLID)
 			continue;
 		ComputeDensity(i);
 		ComputePressure(i);
 		ComputeAccelerationPressure(i);
 	}
-	for (int i = 0; i < m_Particles.size(); i++){
+	
+	if (m_Command.Type != Command::NONE)
+		for (int i = 0; i < m_Particles.size(); i++)
+			EvaluateCommand(i);
+
+	for (int i = 0; i < m_Particles.size(); i++) {
 		if (m_Particles[i].Type == SOLID)
 			continue;
 		UpdateVelocityIteration(i);
@@ -266,7 +271,7 @@ void SPHSimulation::ComputePressure(idx_t i)
 	 * (Andrew) Tait equation
 	 * Stiffness constant is user defined
 	 */
-	m_Particles[i].Pressure =  m_Params.Stiffness *
+	m_Particles[i].Pressure = m_Params.Stiffness *
 				(std::pow(m_Particles[i].Density /
 				m_Params.RestDensity, 7.0f) - 1);
 }
@@ -351,6 +356,17 @@ void SPHSimulation::UpdateVelocityIteration(idx_t i)
 	m_Particles[i].Velocity +=
 				  m_Params.TimeStep *
 				  m_Particles[i].A_press;
+}
+
+
+void SPHSimulation::EvaluateCommand(idx_t i)
+{
+	float d = Norm(m_Particles[i].Position - m_Command.Position);
+	if (d < m_Command.Radius)
+	{
+		float falloff = 1.0f - d / m_Command.Radius;
+		m_Particles[i].Pressure += falloff * m_Command.Strength;
+	}
 }
 
 
