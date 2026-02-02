@@ -131,6 +131,7 @@ template <typename T>
 using producer = std::function<T(void)>;
 // ################################################################## ALIASES ##################################################################
 
+static constexpr float G_CONSTANT = 9.81f;
 
 // CASTING
 template <typename T, typename X>
@@ -210,17 +211,17 @@ inline bool operator==(const coord<T, 3>& a, const coord<T, 3>& b) {
 }
 
 template <typename T, typename R = T>
-R Dot(const coord<T, 2>& a, const coord<T, 2>& b)
+inline R Dot(const coord<T, 2>& a, const coord<T, 2>& b)
 {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y);
 }
 template <typename T, typename R = T>
-R Dot(const coord<T, 3>& a, const coord<T, 3>& b)
+inline R Dot(const coord<T, 3>& a, const coord<T, 3>& b)
 {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y) + to<R>(a.z) * to<R>(b.z);
 }
 template <typename T, size_t D, typename R = T>
-R Norm(const coord<T, D>& a)
+inline R Norm(const coord<T, D>& a)
 {
 	return std::sqrt(Dot(a, a));
 }

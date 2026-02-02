@@ -33,12 +33,12 @@
 
 
 
-static ImVec2 WorldToScreen(const Particle::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize);
-static Particle::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
+static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize);
+static Particle<2>::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 
 
 
-void ImGuiViewer::Attach(SPHSimulation* sim)
+void ImGuiViewer::Attach(SPHSimulation<2>* sim)
 {
 	Observer::Attach(sim);
 
@@ -141,7 +141,7 @@ void ImGuiViewer::DrawStatsWindow()
 			ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
 			ImGui::Text("Velocity: %.3f %.3f", m_Particles[0].Velocity.x, m_Particles[0].Velocity.y);
 		}
-		if (m_Cmd.Type != Command::NONE)
+		if (m_Cmd.Type != Command<2>::NONE)
 			ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
 		else
 			ImGui::Text("Command: NONE");
@@ -170,15 +170,15 @@ void ImGuiViewer::DrawVisualizationWindow()
 
 	if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0)
 	{
-		m_Cmd.Type = Command::PRESSURE;
+		m_Cmd.Type = Command<2>::PRESSURE;
 		m_Cmd.Position = worldPos;
 		m_Cmd.Radius = 0.1;
 		m_Cmd.Strength = 300000;
 		m_Changed = true;
 	}
-	else if (m_Cmd.Type != Command::NONE)
+	else if (m_Cmd.Type != Command<2>::NONE)
 	{
-		m_Cmd.Type = Command::NONE;
+		m_Cmd.Type = Command<2>::NONE;
 		m_Changed = true;
 	}
 
@@ -217,7 +217,7 @@ void ImGuiViewer::DrawVisualizationWindow()
 		}
 		else if (m_ColoringParam == SUBDOMAIN)
 		{
-			SPHSimulation::cell_pos_t cell_pos = SPHSimulation::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
+			SPHSimulation<2>::cell_pos_t cell_pos = SPHSimulation<2>::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
 			color = ImColor::HSV(
 				1.0f - cell_pos.x * m_SimParams.SmoothingLength,
 				1.0f - cell_pos.y * m_SimParams.SmoothingLength,
@@ -226,7 +226,7 @@ void ImGuiViewer::DrawVisualizationWindow()
 		}
 		else if (m_ColoringParam == VELOCITY)
 		{
-			float t = std::sqrt(p.Velocity.x * p.Velocity.x + p.Velocity.y * p.Velocity.y);
+			float t = Norm(p.Velocity);
 			t = std::clamp(t / m_MaxVelocity, 0.0f, 1.0f);
 			color = ImColor::HSV(
 				0.66f - 0.66f * t, // blue -> red
@@ -242,14 +242,14 @@ void ImGuiViewer::DrawVisualizationWindow()
 }
 
 
-static ImVec2 WorldToScreen(const Particle::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize) {
+static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize) {
 	return ImVec2(
 		canvasPos.x + p.x * canvasSize.x,
 		canvasPos.y + (1.0f - p.y) * canvasSize.y
 	);
 }
-static Particle::vec_t ScreenToWorld(const ImVec2& mouse, const ImVec2 canvasPos, const ImVec2 canvasSize) {
-	return Particle::vec_t{
+static Particle<2>::vec_t ScreenToWorld(const ImVec2& mouse, const ImVec2 canvasPos, const ImVec2 canvasSize) {
+	return Particle<2>::vec_t{
 		       to<float>(mouse.x - canvasPos.x) / canvasSize.x,
 		1.0f - to<float>(mouse.y - canvasPos.y) / canvasSize.y
 	};
@@ -374,6 +374,7 @@ bool ImGuiViewer::Init()
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();

@@ -4,12 +4,14 @@
 
 #include "SPHSimulation.hpp"
 
+#include "Command.hpp"
+
 struct GLFWwindow;
 
 // TODO: Make singleton
-class ImGuiViewer : public Observer {
+class ImGuiViewer : public Observer<2> {
 public:
-	using vec_t = Particle::vec_t;
+	using vec_t = Particle<2>::vec_t;
 
 	ImGuiViewer() = default;
 	~ImGuiViewer() override { Stop(); }
@@ -30,7 +32,7 @@ public:
 	/// Executes on the simulation thread
 	void OnEndFrame() override;
 	/// Executes on the simulation thread
-	void Attach(SPHSimulation* sim) override;
+	void Attach(SPHSimulation<2>* sim) override;
 
 private:
 	/// Executes on the UI thread
@@ -47,8 +49,8 @@ private:
 	void DrawVisualizationWindow();
 
 private:
-	std::vector<Particle> m_Particles;
-	SPHSimulation::grid_t m_Grid;
+	std::vector<Particle<2>> m_Particles;
+	SPHSimulation<2>::grid_t m_Grid;
 
 	GLFWwindow* window = nullptr;
 	std::atomic<bool> m_Running = false;
@@ -60,9 +62,9 @@ private:
 	float m_SimFPS = 0;
 	stdc::time_point<stdclock> m_SimFrameStart;
 	float m_MaxVelocity = 10, m_MaxPressure = 50000;
-	Command m_Cmd;
+	Command<2> m_Cmd;
 
-	SPHSimulation::Params m_SimParams;
+	SPHSimulation<2>::Params m_SimParams;
 
 	enum ColoringParam
 	{

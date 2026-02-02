@@ -7,10 +7,12 @@ enum ParticleType : u8
 	SOLID
 };
 
+template <size_t D>
 struct Particle
 {
-	using vec_t = coord<float, 2>;
+	using vec_t = coord<float, D>;
 	using idx_t = u32;
+
 	vec_t Position;
 	vec_t Velocity;
 	vec_t A_grav;

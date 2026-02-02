@@ -5,19 +5,27 @@
 #include "ImGuiViewer.hpp"
 
 
+#define SIZE 2
 
 // Main code
 int main(int, char**)
 {
-	SPHSimulation sph;
+	SPHSimulation<SIZE> sph;
+	BoxInitializer<SIZE> initializer;
 
+	sph.InitializeFluid(&initializer);
+
+	std::cout << fs::current_path();
+
+#if SIZE == 2
 	ImGuiViewer imguiViewer;
-	//XYZExporter exporter;
-
 	sph.AddObserver(&imguiViewer);
-	//sph.AddObserver(&exporter);
-
 	imguiViewer.Start();
+#else
+	XYZExporter exporter;
+	sph.AddObserver(&exporter);
+#endif
+
 	sph.Start();
 
 	return 0;

@@ -3,21 +3,18 @@
 #include <fstream>
 #include <format>
 
-class XYZExporter : public Observer {
+class XYZExporter : public Observer<3> {
 public:
 	~XYZExporter() override = default;
 
 	/// Executes on the simulation thread
 	void OnEndFrame() override {
-		// TODO: ASSERT m_Sim != nullptr
+		if (m_Sim == nullptr)
+			return;
 
-		std::ofstream out(std::format("output-{}", m_Sim->GetTime()));
-		for (auto& p : *m_particles) {
-			out << p.Position.x << " " << p.Position.y << " 0\n";
-		}
+		std::ofstream out(std::format("output-{}", m_Sim->GetFrame()));
+		for (auto& p : m_Sim->GetParticles())
+			out << p.Position.x << " " << p.Position.y << " " << p.Position.z << "\n";
 	}
 
-
-private:
-	const std::vector<Particle>* m_particles = nullptr;
 };
