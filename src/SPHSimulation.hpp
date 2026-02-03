@@ -15,8 +15,8 @@ public:
 	static constexpr size_t size = D;
 	using      idx_t = Particle<D>::idx_t;
 	using     cell_t = std::vector<idx_t>; // particle indices
-	using cell_pos_t = coord<int, 2>;
-	using     grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<2>>;
+	using cell_pos_t = coord<int, D>;
+	using     grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<D>>;
 	using      vec_t = Particle<D>::vec_t;
 
 	struct Params
@@ -141,14 +141,14 @@ private:
 
 
 template <size_t D>
-SPHSimulation<D>::SPHSimulation() : W_Ker(m_Params.SmoothingLength)
+inline SPHSimulation<D>::SPHSimulation() : W_Ker(m_Params.SmoothingLength)
 {
 
 }
 
 
 template <size_t D>
-void SPHSimulation<D>::Start()
+inline void SPHSimulation<D>::Start()
 {
 	// TODO: Specify final timestep, and display in the ui the current progress (percentage and value)
 	for (int i = 0; i < 400000; i++) {
@@ -156,7 +156,7 @@ void SPHSimulation<D>::Start()
 	}
 }
 template <size_t D>
-void SPHSimulation<D>::Step(int step_num)
+inline void SPHSimulation<D>::Step(int step_num)
 {
 	NotifyStartFrame();
 
@@ -173,7 +173,7 @@ void SPHSimulation<D>::Step(int step_num)
 
 
 template <size_t D>
-void SPHSimulation<D>::BuildGrid()
+inline void SPHSimulation<D>::BuildGrid()
 {
 	// We have to clear Grid at each timestep to avoid cummulation of neighbors
 	m_Grid.clear();
@@ -187,7 +187,7 @@ void SPHSimulation<D>::BuildGrid()
 	}
 }
 template <size_t D>
-void SPHSimulation<D>::FindNeighbors(idx_t i, std::vector<idx_t>& out)
+inline void SPHSimulation<D>::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 {
 	static const cell_pos_t neighborOffsets[3 * 3] = {
 		{ -1, -1 }, { -1,  0 }, { -1, +1 },
@@ -236,14 +236,14 @@ void SPHSimulation<D>::FindNeighbors(idx_t i, std::vector<idx_t>& out)
 }
 
 template <size_t D>
-void SPHSimulation<D>::FindAllNeighbors()
+inline void SPHSimulation<D>::FindAllNeighbors()
 {
 	for (int i = 0; i < m_Particles.size(); i++)
 		FindNeighbors(i, m_Particles[i].Neighbors);
 }
 
 template <size_t D>
-void SPHSimulation<D>::Initialize(int step_num)
+inline void SPHSimulation<D>::Initialize(int step_num)
 {
 	/*
 	 * Non-iterative part of the timestep
@@ -280,7 +280,7 @@ void SPHSimulation<D>::Initialize(int step_num)
 	}
 }
 template <size_t D>
-void SPHSimulation<D>::IterativePressure()
+inline void SPHSimulation<D>::IterativePressure()
 {
 	/*
 	 * Use simple scheme with splitting
@@ -308,7 +308,7 @@ void SPHSimulation<D>::IterativePressure()
 }
 
 template <size_t D>
-void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
+inline void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
 {
 	/*
 	 * Computes 'mass' of the boundary particles used
@@ -324,7 +324,7 @@ void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
 	m_Particles[i].BoundaryPsi = (V > 1e2) ? m_Params.RestDensity / V : 0;
 }
 template <size_t D>
-void SPHSimulation<D>::ComputeDensity(idx_t i)
+inline void SPHSimulation<D>::ComputeDensity(idx_t i)
 {
 	/*
 	 * Simple function to compute density
@@ -349,7 +349,7 @@ void SPHSimulation<D>::ComputeDensity(idx_t i)
 }
 
 template <size_t D>
-void SPHSimulation<D>::ComputePressure(idx_t i)
+inline void SPHSimulation<D>::ComputePressure(idx_t i)
 {
 	/*
 	 * (Andrew) Tait equation
@@ -361,7 +361,7 @@ void SPHSimulation<D>::ComputePressure(idx_t i)
 }
 
 template <size_t D>
-void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
+inline void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
 {
 	/*
 	 * Computes acceleration dues to viscosity from [1]
@@ -393,7 +393,7 @@ void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
 }
 
 template <size_t D>
-void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
+inline void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
 {
 	/*
 	 * Computes acceleration dues to viscosity from [2]
@@ -414,7 +414,7 @@ void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
 }
 
 template <size_t D>
-void SPHSimulation<D>::UpdatePositionInitial(idx_t i)
+inline void SPHSimulation<D>::UpdatePositionInitial(idx_t i)
 {
 	//Update position due to viscosity and gravity
 	m_Particles[i].Position +=
@@ -422,7 +422,7 @@ void SPHSimulation<D>::UpdatePositionInitial(idx_t i)
 		m_Particles[i].Velocity;
 }
 template <size_t D>
-void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
+inline void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
 {
 	//Update position due to pressure
 	m_Particles[i].Position +=
@@ -431,7 +431,7 @@ void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
 		m_Particles[i].A_press;
 }
 template <size_t D>
-void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
+inline void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
 {
 	//Update velocity due to viscosity and gravity
 	m_Particles[i].Velocity +=
@@ -440,7 +440,7 @@ void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
 			m_Particles[i].A_visc);
 }
 template <size_t D>
-void SPHSimulation<D>::UpdateVelocityIteration(idx_t i)
+inline void SPHSimulation<D>::UpdateVelocityIteration(idx_t i)
 {
 	//Update velocity due to pressure
 	m_Particles[i].Velocity +=
@@ -450,7 +450,7 @@ void SPHSimulation<D>::UpdateVelocityIteration(idx_t i)
 
 
 template <size_t D>
-void SPHSimulation<D>::EvaluateCommand(idx_t i)
+inline void SPHSimulation<D>::EvaluateCommand(idx_t i)
 {
 	float d = Norm(m_Particles[i].Position - m_Command.Position);
 	if (d < m_Command.Radius)
@@ -460,12 +460,21 @@ void SPHSimulation<D>::EvaluateCommand(idx_t i)
 	}
 }
 
-template <size_t D>
-SPHSimulation<D>::cell_pos_t SPHSimulation<D>::GetCellPosition(const vec_t& p, const float h)
+template <>
+inline SPHSimulation<2>::cell_pos_t SPHSimulation<2>::GetCellPosition(const vec_t& p, const float h)
 {
 	return {
 		to<int>(std::floor(p.x / h)),
 		to<int>(std::floor(p.y / h))
+	};
+}
+template <>
+inline SPHSimulation<3>::cell_pos_t SPHSimulation<3>::GetCellPosition(const vec_t& p, const float h)
+{
+	return {
+		to<int>(std::floor(p.x / h)),
+		to<int>(std::floor(p.y / h)),
+		to<int>(std::floor(p.z / h))
 	};
 }
 

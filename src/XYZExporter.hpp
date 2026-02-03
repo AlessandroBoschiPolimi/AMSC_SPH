@@ -23,11 +23,14 @@ public:
 		print_time(now - m_SimFrameEnd);
 		std::cout << ' ';
 		
-		auto writeStart = stdclock::now();
-		writeVTUBinary(m_Sim->GetFrame(), m_Sim->GetParticles());
-		auto writeEnd = stdclock::now();
-		std::cout << "Write ";
-		print_time(writeEnd - writeStart);
+		if (m_Sim->GetFrame() % 10 == 0)
+		{
+			auto writeStart = stdclock::now();
+			writeVTUBinary(m_Sim->GetFrame() / 10, m_Sim->GetParticles());
+			auto writeEnd = stdclock::now();
+			std::cout << "Write ";
+			print_time(writeEnd - writeStart);
+		}
 		std::cout << '\n';
 
 		m_SimFrameEnd = stdclock::now();
