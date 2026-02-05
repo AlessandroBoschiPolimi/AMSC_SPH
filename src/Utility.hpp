@@ -63,6 +63,7 @@ Lasciate ogne ';', voi ch'intrate.
 #include <queue>
 
 #include <functional>
+#include <cmath>
 
 #include <memory>
 #include <condition_variable>

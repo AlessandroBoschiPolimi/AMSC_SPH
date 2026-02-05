@@ -99,9 +99,12 @@ elseif (WIN32)
 	target_link_libraries(${PROJECT_NAME}
 		opengl32
 	)
-else()
-	find_package(OpenGL REQUIRED)
-	target_link_libraries(${PROJECT_NAME}
-		OpenGL::GL
-	)
+else ()
+    find_package(OpenGL REQUIRED)
+    find_package(X11 REQUIRED)
+
+    target_link_libraries(${PROJECT_NAME}
+        OpenGL::GL
+        X11::X11
+    )
 endif()
