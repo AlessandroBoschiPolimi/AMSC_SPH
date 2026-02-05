@@ -5,7 +5,10 @@
 #include "Kernel.hpp"
 
 #include "Command.hpp"
-#include "SimInitializer.hpp"
+#include "Initializers/SimInitializer.hpp"
+#include "Neighbors/NeighborFinder.hpp"
+
+
 
 
 template <size_t D>
@@ -14,9 +17,6 @@ class SPHSimulation
 public:
 	static constexpr size_t size = D;
 	using      idx_t = Particle<D>::idx_t;
-	using     cell_t = std::vector<idx_t>; // particle indices
-	using cell_pos_t = coord<int, D>;
-	using     grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<D>>;
 	using      vec_t = Particle<D>::vec_t;
 
 	struct Params
@@ -30,10 +30,11 @@ public:
 		float PressureTol = 1e-2f;
 	};
 
-public:
-	SPHSimulation();
-	~SPHSimulation()
-	{
+	friend class NeighborFinder<D>;
+
+public: // Simulation interface
+	SPHSimulation(NeighborFinder<D>* nf);
+	~SPHSimulation() {
 		for (auto* o : m_Observers)
 			o->Attach(nullptr);
 	}
@@ -41,18 +42,16 @@ public:
 	void InitializeFluid(const SimInitializer<D>* init);
 	void Start();
 
-	static cell_pos_t GetCellPosition(const vec_t& p, const float h);
 
 
-private:
+private: // Simulation functions
 	/*void BuildYWall(float x, float begin, float end, float delta);
 	void BuildXWall(float y, float begin, float end, float delta);*/
 
 	void Step(int step_num);
 
 
-	// Functions handling the three parts of the scheme for all the particles 
-	void BuildGrid();
+	// Functions handling the three parts of the scheme for all the particles
 	void FindAllNeighbors();
 	void Initialize(int step_num);
 	void IterativePressure();
@@ -66,8 +65,6 @@ private:
 	void UpdatePositionIteration(idx_t i);
 	void UpdateVelocityInitial(idx_t i);
 	void UpdateVelocityIteration(idx_t i);
-	/// Populates "out" with the neighbors of particle i-th
-	void FindNeighbors(idx_t i, std::vector<idx_t>& out);
 
 	void EvaluateCommand(idx_t i);
 
@@ -75,19 +72,19 @@ private:
 private:
 	std::vector<Observer<D>*> m_Observers;
 	std::vector<Particle<D>> m_Particles;
+
 	size_t m_Frame = 0;
 	float m_Time = 0.0f;
 
 	Params m_Params;
 	Command<D> m_Command;
 
-
-	grid_t m_Grid;
+	NeighborFinder<D>* m_NeighborFinder = nullptr;
 
 	Kernel<D> W_Ker;
 
 
-public:
+public: // Generic interface
 	void AddObserver(Observer<D>* obs) {
 		obs->Attach(this);
 		m_Observers.push_back(obs);
@@ -107,7 +104,6 @@ public:
 	float GetSmoothingLength() const { return m_Params.SmoothingLength; }
 
 	const std::vector<Particle<D>>& GetParticles() const { return m_Particles; }
-	const grid_t& GetGrid() const { return m_Grid; }
 
 	float  GetTime()  const { return m_Time; }
 	size_t GetFrame() const { return m_Frame; }
@@ -115,7 +111,7 @@ public:
 	void ApplyCommand(const Command<D>& cmd) { m_Command = cmd; }
 
 
-private:
+private: // Generic functions
 	void NotifyStartFrame() {
 		for (auto* o : m_Observers)
 			o->OnStartFrame();
@@ -124,13 +120,7 @@ private:
 		for (auto* o : m_Observers)
 			o->OnEndFrame();
 	}
-
-	/*void InitializeSimulation_Box();
-	void InitializeSimulation_Tray();*/
 };
-
-
-
 
 
 /* References:
@@ -139,12 +129,12 @@ private:
  */
 
 
+// TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
+template<size_t D>
+inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf)
+	: m_NeighborFinder(nf), W_Ker(m_Params.SmoothingLength)
+{ }
 
-template <size_t D>
-inline SPHSimulation<D>::SPHSimulation() : W_Ker(m_Params.SmoothingLength)
-{
-
-}
 
 
 template <size_t D>
@@ -161,7 +151,7 @@ inline void SPHSimulation<D>::Step(int step_num)
 	NotifyStartFrame();
 
 	// Split the particles in a grid of subdomains.
-	BuildGrid();
+	m_NeighborFinder->InitializeFrame(this);
 	FindAllNeighbors();
 	Initialize(step_num);
 	IterativePressure();
@@ -172,74 +162,12 @@ inline void SPHSimulation<D>::Step(int step_num)
 }
 
 
-template <size_t D>
-inline void SPHSimulation<D>::BuildGrid()
-{
-	// We have to clear Grid at each timestep to avoid cummulation of neighbors
-	m_Grid.clear();
-	m_Grid.reserve(m_Particles.size());
-
-	float h = m_Params.SmoothingLength;
-
-	for (size_t i = 0; i < m_Particles.size(); ++i) {
-		cell_pos_t c = GetCellPosition(m_Particles[i].Position, m_Params.SmoothingLength);
-		m_Grid[c].push_back(i);
-	}
-}
-template <size_t D>
-inline void SPHSimulation<D>::FindNeighbors(idx_t i, std::vector<idx_t>& out)
-{
-	static const cell_pos_t neighborOffsets[3 * 3] = {
-		{ -1, -1 }, { -1,  0 }, { -1, +1 },
-		{  0, -1 }, {  0,  0 }, {  0, +1 },
-		{ +1, -1 }, { +1,  0 }, { +1, +1 }
-	};
-
-	/* for 3d
-	neighborOffsets[27] = {
-		{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
-		{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
-		{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
-
-		{ 0,-1,-1}, { 0,-1,0}, { 0,-1,1},
-		{ 0, 0,-1}, { 0, 0,0}, { 0, 0,1},
-		{ 0, 1,-1}, { 0, 1,0}, { 0, 1,1},
-
-		{ 1,-1,-1}, { 1,-1,0}, { 1,-1,1},
-		{ 1, 0,-1}, { 1, 0,0}, { 1, 0,1},
-		{ 1, 1,-1}, { 1, 1,0}, { 1, 1,1}
-	};
-	*/
-
-	// TODO: maybe reserve out to the number of particles / number of cells.
-	// Same as above with grid
-	out.clear();
-	float h = m_Params.SmoothingLength;
-	float h2 = h * h;
-
-	cell_pos_t base = GetCellPosition(m_Particles[i].Position, m_Params.SmoothingLength);
-	for (const cell_pos_t& off : neighborOffsets)
-	{
-		cell_pos_t c = base + off;
-
-		auto it = m_Grid.find(c);
-		if (it == m_Grid.end()) continue;
-
-		for (idx_t j : it->second) {
-			if (j == i) continue;
-
-			vec_t r = m_Particles[j].Position - m_Particles[i].Position;
-			if (Dot(r, r) < h2)
-				out.push_back(j);
-		}
-	}
-}
 
 template <size_t D>
 inline void SPHSimulation<D>::FindAllNeighbors()
 {
 	for (int i = 0; i < m_Particles.size(); i++)
-		FindNeighbors(i, m_Particles[i].Neighbors);
+		m_NeighborFinder->Find(i, m_Particles[i].Neighbors);
 }
 
 template <size_t D>
@@ -460,23 +388,6 @@ inline void SPHSimulation<D>::EvaluateCommand(idx_t i)
 	}
 }
 
-template <>
-inline SPHSimulation<2>::cell_pos_t SPHSimulation<2>::GetCellPosition(const vec_t& p, const float h)
-{
-	return {
-		to<int>(std::floor(p.x / h)),
-		to<int>(std::floor(p.y / h))
-	};
-}
-template <>
-inline SPHSimulation<3>::cell_pos_t SPHSimulation<3>::GetCellPosition(const vec_t& p, const float h)
-{
-	return {
-		to<int>(std::floor(p.x / h)),
-		to<int>(std::floor(p.y / h)),
-		to<int>(std::floor(p.z / h))
-	};
-}
 
 
 

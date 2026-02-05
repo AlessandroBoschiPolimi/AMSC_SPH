@@ -145,13 +145,11 @@ template <typename T, size_t D>
 struct coord;
 
 template <typename T>
-struct coord<T, 2>
-{
+struct coord<T, 2> {
 	T x, y;
 };
 template <typename T>
-struct coord<T, 3>
-{
+struct coord<T, 3> {
 	T x, y, z;
 };
 
@@ -254,6 +252,31 @@ struct CoordIntHash<3> {
 		seed ^= h2 + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
 		seed ^= h3 + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
 		return seed;
+	}
+};
+
+
+
+
+
+
+template <typename T, size_t D>
+struct ParticlesVec;
+
+template <typename T>
+struct ParticlesVec<T, 2> {
+	std::vector<T> x, y;
+
+	inline coord<T, 2>& operator[](const size_t i) {
+		return { x[i], y[i] };
+	}
+};
+template <typename T>
+struct ParticlesVec<T, 3> {
+	std::vector<T> x, y, z;
+
+	inline coord<T, 3>& operator[](const size_t i) {
+		return { x[i], y[i], z[i] };
 	}
 };
 // ################################################################## COORD ##################################################################

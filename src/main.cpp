@@ -1,16 +1,24 @@
 
 #include "Utility.hpp"
 #include "SPHSimulation.hpp"
-#include "XYZExporter.hpp"
-#include "ImGuiViewer.hpp"
+
+#include "Visualizers/XYZExporter.hpp"
+#include "Visualizers/ImGuiViewer.hpp"
+
+#include "Neighbors/SpatialHashing.hpp"
+
+#include "Initializers/TrayInitializer.hpp"
+#include "Initializers/BoxInitializer.hpp"
 
 
-#define SIZE 3
+#define SIZE 2
 
 // Main code
 int main(int, char**)
 {
-	SPHSimulation<SIZE> sph;
+	SpatialHashing<SIZE> nf;
+
+	SPHSimulation<SIZE> sph(&nf);
 
 
 	std::cout << fs::current_path() << '\n';

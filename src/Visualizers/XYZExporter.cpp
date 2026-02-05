@@ -1,44 +1,39 @@
-#pragma once
-#include "Observer.hpp"
-#include <fstream>
-#include <format>
+#include "XYZExporter.hpp"
+#include "SPHSimulation.hpp"
+
 
 void writeXYZ(const int frame, const std::vector<Particle<3>>& particles);
 void writeVTU(const int frame, const std::vector<Particle<3>>& particles);
 void writeVTUBinary(const int frame, const std::vector<Particle<3>>& particles);
 
-class XYZExporter : public Observer<3> {
-public:
-	~XYZExporter() override = default;
 
-	/// Executes on the simulation thread
-	void OnEndFrame() override {
-		if (m_Sim == nullptr)
-			return;
 
-		std::cout << "Frame: " << m_Sim->GetFrame() << '\n';
+void XYZExporter::OnEndFrame() {
+	if (m_Sim == nullptr)
+		return;
 
-		auto now = stdclock::now();
-		std::cout << "Simulate ";
-		print_time(now - m_SimFrameEnd);
-		std::cout << ' ';
-		
-		if (m_Sim->GetFrame() % 10 == 0)
-		{
-			auto writeStart = stdclock::now();
-			writeVTUBinary(m_Sim->GetFrame() / 10, m_Sim->GetParticles());
-			auto writeEnd = stdclock::now();
-			std::cout << "Write ";
-			print_time(writeEnd - writeStart);
-		}
-		std::cout << '\n';
+	std::cout << "Frame: " << m_Sim->GetFrame() << '\n';
 
-		m_SimFrameEnd = stdclock::now();
+	auto now = stdclock::now();
+	std::cout << "Simulate ";
+	print_time(now - m_SimFrameEnd);
+	std::cout << ' ';
+
+	if (m_Sim->GetFrame() % 10 == 0)
+	{
+		auto writeStart = stdclock::now();
+		writeVTUBinary(m_Sim->GetFrame() / 10, m_Sim->GetParticles());
+		auto writeEnd = stdclock::now();
+		std::cout << "Write ";
+		print_time(writeEnd - writeStart);
 	}
+	std::cout << '\n';
 
-private:
-	stdc::time_point<stdclock> m_SimFrameEnd;
-};
+	m_SimFrameEnd = stdclock::now();
+}
+
+
+
 
 void writeXYZ(const int frame, const std::vector<Particle<3>>& particles)
 {

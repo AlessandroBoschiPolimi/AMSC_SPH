@@ -64,7 +64,7 @@ void ImGuiViewer::OnEndFrame()
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
 	// TODO: triple buffering
 	m_Particles = m_Sim->GetParticles();
-	m_Grid = m_Sim->GetGrid();
+	//m_Grid = m_Sim->GetGrid();
 }
 void ImGuiViewer::OnStartFrame()
 {
@@ -217,12 +217,12 @@ void ImGuiViewer::DrawVisualizationWindow()
 		}
 		else if (m_ColoringParam == SUBDOMAIN)
 		{
-			SPHSimulation<2>::cell_pos_t cell_pos = SPHSimulation<2>::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
+			/*SPHSimulation<2>::cell_pos_t cell_pos = SPHSimulation<2>::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
 			color = ImColor::HSV(
 				1.0f - cell_pos.x * m_SimParams.SmoothingLength,
 				1.0f - cell_pos.y * m_SimParams.SmoothingLength,
 				1.0f
-			);
+			);*/
 		}
 		else if (m_ColoringParam == VELOCITY)
 		{

@@ -50,7 +50,7 @@ private:
 
 private:
 	std::vector<Particle<2>> m_Particles;
-	SPHSimulation<2>::grid_t m_Grid;
+	//SPHSimulation<2>::grid_t m_Grid;
 
 	GLFWwindow* window = nullptr;
 	std::atomic<bool> m_Running = false;

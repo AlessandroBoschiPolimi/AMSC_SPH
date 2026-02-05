@@ -7,11 +7,18 @@ enum ParticleType : u8
 	SOLID
 };
 
+/*
+TODO: 
+AoS   : [{x, y, z, vx, vy, vz, ...}]             Array of particles
+Hybrid: {[{x, y, z}], [{vx, vy, vz}], ...}       One array per coord
+SoA   : {[x], [y], [z], [vx], [vy], [vz], ...}   One array per component
+*/
+
 template <size_t D>
 struct Particle
 {
 	using vec_t = coord<float, D>;
-	using idx_t = u32;
+	using idx_t = u32; // alias to specify that the int represents the index of a particle
 
 	vec_t Position;
 	vec_t Velocity;
