@@ -27,7 +27,11 @@ private:
 template <size_t D>
 Kernel<D>::Kernel(float h_) : h(h_)
 {
-	alpha = 5.0f / (14.0f * std::numbers::pi * h * h);
+	if (D == 2)
+		alpha = 5.0f / (14.0f * std::numbers::pi * h * h);
+	else
+		alpha = 1.0f / (4.0f * std::numbers::pi * h * h * h);
+
 }
 
 template <size_t D>
