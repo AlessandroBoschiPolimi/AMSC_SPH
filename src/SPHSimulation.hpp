@@ -22,10 +22,10 @@ public:
 	struct Params
 	{
 		float RestDensity = 1000.0f;
-		float Stiffness = 0.05f;
-		float Viscosity = 1e-2f;
+		float Stiffness = 1e2f;
+		float Viscosity = 1e-4f;
 		float ViscosityRigid = 5e-2f;
-		float TimeStep = 0.00002f;
+		float TimeStep = 0.0002f;
 		float SmoothingLength = 0.007f;
 		float PressureTol = 1e-2f;
 	};
@@ -132,7 +132,7 @@ private: // Generic functions
 // TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
 template<size_t D>
 inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf)
-	: m_NeighborFinder(nf), W_Ker(m_Params.SmoothingLength)
+	: m_NeighborFinder(nf), W_Ker(m_Params.SmoothingLength/ 2.0f)
 { }
 
 
@@ -220,7 +220,6 @@ inline void SPHSimulation<D>::IterativePressure()
 			continue;
 		ComputeDensity(i);
 		ComputePressure(i);
-		ComputeAccelerationPressure(i);
 	}
 
 	if (m_Command.Type != Command<D>::NONE)
@@ -230,6 +229,7 @@ inline void SPHSimulation<D>::IterativePressure()
 	for (int i = 0; i < m_Particles.size(); i++) {
 		if (m_Particles[i].Type == SOLID)
 			continue;
+		ComputeAccelerationPressure(i);
 		UpdateVelocityIteration(i);
 		UpdatePositionIteration(i);
 	}
@@ -245,11 +245,11 @@ inline void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
 	float V = 0;
 	for (auto& j : m_Particles[i].Neighbors)
 	{
-		if (m_Particles[j].Type == FLUID)
+		if (m_Particles[j].Type == SOLID)
 			V += W_Ker.GetValue(m_Particles[i], m_Particles[j]);
 	}
 	//Clamp the values in case the volume is too small
-	m_Particles[i].BoundaryPsi = (V > 1e2) ? m_Params.RestDensity / V : 0;
+	m_Particles[i].BoundaryPsi = (V > 1.0f) ? m_Params.RestDensity / V : 0;
 }
 template <size_t D>
 inline void SPHSimulation<D>::ComputeDensity(idx_t i)
@@ -260,7 +260,6 @@ inline void SPHSimulation<D>::ComputeDensity(idx_t i)
 	 * For security, clamps the value in the end to avoid disappearing particles
 	 */
 	m_Particles[i].Density = m_Particles[i].Mass * W_Ker.GetValue(m_Particles[i], m_Particles[i]);
-	m_Particles[i].Density = 0.0f;
 	for (auto& j : m_Particles[i].Neighbors) {
 		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
 		if (m_Particles[j].Type == FLUID)
@@ -273,7 +272,6 @@ inline void SPHSimulation<D>::ComputeDensity(idx_t i)
 			m_Particles[i].Density += m_Particles[j].BoundaryPsi * W_ij;
 		}
 	}
-	m_Particles[i].Density = std::max(m_Particles[i].Density, 0.1f * m_Params.RestDensity);
 }
 
 template <size_t D>
@@ -283,9 +281,9 @@ inline void SPHSimulation<D>::ComputePressure(idx_t i)
 	 * (Andrew) Tait equation
 	 * Stiffness constant is user defined
 	 */
-	m_Particles[i].Pressure = m_Params.Stiffness *
+	m_Particles[i].Pressure = std::max(m_Params.Stiffness *
 		(std::pow(m_Particles[i].Density /
-			m_Params.RestDensity, 7.0f) - 1);
+			m_Params.RestDensity, 7.0f) - 1), 0.0f);
 }
 
 template <size_t D>
@@ -330,7 +328,7 @@ inline void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
 	m_Particles[i].A_press = vec_t{ 0, 0 };
 	for (auto& j : m_Particles[i].Neighbors)
 	{
-		float factor = (m_Particles[j].Type == SOLID) ? (m_Particles[j].BoundaryPsi) : m_Particles[j].Mass;
+		float factor = (m_Particles[j].Type == SOLID) ? (m_Particles[j].BoundaryPsi / 2.0f) : m_Particles[j].Mass;
 		idx_t z = (m_Particles[j].Type == SOLID) ? i : j;
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		m_Particles[i].A_press -=
