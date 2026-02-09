@@ -45,5 +45,5 @@ inline void BoxInitializer<2>::Init(std::vector<Particle<2>>& out, float h) cons
 	}
 		BuildWallAlongY(out, 1.0, 0.25, 0.8, 0.0025);
 		BuildBox(out, coord<float, 2>{0.1, 0.25}, 0.1, 0.1, 0.0025);
-		BuildBox(out, coord<float, 2>{0.1, 0.4}, 0.1, 0.1, 0.0025);
+		BuildCircle(out, coord<float, 2>{0.8, 0.35}, 0.05, 0.05);
 }

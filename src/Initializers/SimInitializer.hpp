@@ -101,6 +101,18 @@ inline void SimInitializer<2>::BuildBox(std::vector<Particle<2>>& out, coord<flo
 
 	}
 }
+inline void SimInitializer<2>::BuildCircle(std::vector<Particle<2>>& out, coord<float, 2> centre, float radius, float delta) const
+{
+	for (float psi = 0.0f; psi <= 2.0f * std::numbers::pi; psi += delta)
+	{
+		Particle<2> p;
+		p.Type = SOLID;
+		p.Position.y = centre.y + std::sin(psi) * radius;
+		p.Position.x = centre.x + std::cos(psi) * radius;
+		p.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
+		out.push_back(p);
+	}
+}
 
 
 inline void SimInitializer<3>::BuildWallAlongXY(std::vector<Particle<3>>& out, float z, float minx, float maxx, float miny, float maxy, float delta) const
