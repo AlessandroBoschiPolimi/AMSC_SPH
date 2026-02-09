@@ -24,8 +24,8 @@ public:
 		float RestDensity = 1000.0f;
 		float Stiffness = 1e2f;
 		float Viscosity = 1e-4f;
-		float ViscosityRigid = 5e-2f;
-		float TimeStep = 0.0002f;
+		float ViscosityRigid = 5e-3f;
+		float TimeStep = 0.0006f;
 		float SmoothingLength = 0.007f;
 		float PressureTol = 1e-2f;
 	};

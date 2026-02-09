@@ -15,6 +15,10 @@ public:
 
 	void BuildWallAlongX(std::vector<Particle<2>>& out, float y, float minx, float maxx, float delta) const;
 	void BuildWallAlongY(std::vector<Particle<2>>& out, float x, float miny, float maxy, float delta) const;
+	void BuildBox(std::vector<Particle<2>>& out, coord<float, 2> left_bottom_corner, float xsize, float ysize, float delta) const;
+	void BuildCircle(std::vector<Particle<2>>& out, coord<float, 2> centre, float radius, float delta) const;
+private:
+	float maxx, maxy;
 };
 
 template <>
@@ -59,6 +63,42 @@ inline void SimInitializer<2>::BuildWallAlongY(std::vector<Particle<2>>& out, fl
 		p.Position.x = x;
 		p.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
 		out.push_back(p);
+	}
+}
+inline void SimInitializer<2>::BuildBox(std::vector<Particle<2>>& out, coord<float, 2> left_bottom_corner, float xsize, float ysize, float delta) const
+{
+	for (float x = 0; x <= xsize; x+= delta)
+	{
+		Particle<2> p_bot;
+		p_bot.Type = SOLID;
+		p_bot.Position.y = left_bottom_corner.y;
+		p_bot.Position.x = left_bottom_corner.x + x;
+		p_bot.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
+		out.push_back(p_bot);
+
+		Particle<2> p_top;
+		p_top.Type = SOLID;
+		p_top.Position.y = left_bottom_corner.y + ysize;
+		p_top.Position.x = left_bottom_corner.x + x;
+		p_top.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
+		out.push_back(p_top);
+	}
+	for (float y = delta; y < ysize; y+= delta)
+	{
+		Particle<2> p_bot;
+		p_bot.Type = SOLID;
+		p_bot.Position.y = left_bottom_corner.y + y;
+		p_bot.Position.x = left_bottom_corner.x;
+		p_bot.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
+		out.push_back(p_bot);
+
+		Particle<2> p_top;
+		p_top.Type = SOLID;
+		p_top.Position.y = left_bottom_corner.y + y;
+		p_top.Position.x = left_bottom_corner.x + xsize;
+		p_top.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
+		out.push_back(p_top);
+
 	}
 }
 
