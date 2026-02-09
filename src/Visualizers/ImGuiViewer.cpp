@@ -13,6 +13,7 @@
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
+#include <imgui_internal.h>
 #include <glad/glad.h>
 #include <imgui_impl_opengl3.h>
 #include <stdio.h>
@@ -119,6 +120,9 @@ static void DrawLegend(ImVec2 size)
 
 void ImGuiViewer::DrawStatsWindow()
 {
+#ifdef IMGUI_HAS_DOCK
+	ImGui::SetNextWindowDockID(m_DockIDLeft, ImGuiCond_Appearing);
+#endif
 	ImGui::Begin("SPH Stats");
 
 	{
@@ -127,7 +131,7 @@ void ImGuiViewer::DrawStatsWindow()
 		m_Changed |= ImGui::SliderFloat("Rest Density"    , &m_SimParams.RestDensity    , 500      ,   1500       , "%.0f");
 		m_Changed |= ImGui::SliderFloat("Stiffness"       , &m_SimParams.Stiffness      ,   0      ,      1       , "%.5f");
 		m_Changed |= ImGui::SliderFloat("Viscosity"       , &m_SimParams.Viscosity      ,   0      ,      1       , "%.5f");
-		m_Changed |= ImGui::SliderFloat("dt"              , &m_SimParams.TimeStep       ,   0.0000f,      0.00005f, "%.7f");
+		m_Changed |= ImGui::SliderFloat("dt"              , &m_SimParams.TimeStep       ,   0.0000f,      0.001f  , "%.7f");
 		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength,   0.0001f,      0.5f    , "%.7f");
 		
 		ImGui::SliderFloat("Max UI Velocity" , &m_MaxVelocity              ,   0      ,     30       , "%.5f");
@@ -158,6 +162,9 @@ void ImGuiViewer::DrawStatsWindow()
 }
 void ImGuiViewer::DrawVisualizationWindow()
 {
+#ifdef IMGUI_HAS_DOCK
+	ImGui::SetNextWindowDockID(m_DockIDCenter, ImGuiCond_Appearing);
+#endif
 	ImGui::Begin("Fluid");
 
 	ImVec2 canvasPos  = ImGui::GetCursorScreenPos();
@@ -173,7 +180,7 @@ void ImGuiViewer::DrawVisualizationWindow()
 		m_Cmd.Type = Command<2>::PRESSURE;
 		m_Cmd.Position = worldPos;
 		m_Cmd.Radius = 0.1;
-		m_Cmd.Strength = 300000;
+		m_Cmd.Strength = 20000;
 		m_Changed = true;
 	}
 	else if (m_Cmd.Type != Command<2>::NONE)
@@ -241,6 +248,32 @@ void ImGuiViewer::DrawVisualizationWindow()
 	ImGui::End();
 }
 
+void ImGuiViewer::BeginFullscreenDockspace()
+{
+#ifdef IMGUI_HAS_DOCK
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::DockSpaceOverViewport(m_DockspaceID, viewport, ImGuiDockNodeFlags_PassthruCentralNode);
+#endif
+}
+void ImGuiViewer::BuildInitialLayout()
+{
+#ifdef IMGUI_HAS_DOCK
+	static bool first_time = true;
+	if (!first_time) return;
+	first_time = false;
+
+	m_DockspaceID = ImGui::GetID("FullscreenDockspace");
+	ImGui::DockBuilderRemoveNode(m_DockspaceID);
+	ImGui::DockBuilderAddNode(m_DockspaceID, ImGuiDockNodeFlags_DockSpace);
+	ImGui::DockBuilderSetNodeSize(m_DockspaceID, ImVec2(800, 600));
+
+	m_DockIDLeft = ImGui::DockBuilderSplitNode(m_DockspaceID, ImGuiDir_Left, 0.40f, nullptr, &m_DockIDCenter);
+
+	ImGui::DockBuilderFinish(m_DockspaceID);
+#endif
+}
+
+
 
 static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize) {
 	return ImVec2(
@@ -250,7 +283,7 @@ static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos,
 }
 static Particle<2>::vec_t ScreenToWorld(const ImVec2& mouse, const ImVec2 canvasPos, const ImVec2 canvasSize) {
 	return Particle<2>::vec_t{
-		       to<float>(mouse.x - canvasPos.x) / canvasSize.x,
+			   to<float>(mouse.x - canvasPos.x) / canvasSize.x,
 		1.0f - to<float>(mouse.y - canvasPos.y) / canvasSize.y
 	};
 }
@@ -288,11 +321,14 @@ void ImGuiViewer::Loop()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		static bool show_demo_window = true;
+		static bool show_demo_window = false;
 		static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 		if (show_demo_window)
 			ImGui::ShowDemoWindow(&show_demo_window);
+
+		BuildInitialLayout();
+		BeginFullscreenDockspace();
 
 		DrawStatsWindow();
 		DrawVisualizationWindow();
@@ -360,7 +396,7 @@ bool ImGuiViewer::Init()
 
 	// Create window with graphics context
 	float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
-	window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+	window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "Cool 2D SPH visualization", nullptr, nullptr);
 	if (window == nullptr)
 		return false;
 	glfwMakeContextCurrent(window);
@@ -374,8 +410,8 @@ bool ImGuiViewer::Init()
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	#ifdef ImGuiConfigFlags_DockingEnable
-   	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	#ifdef IMGUI_HAS_DOCK
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	#endif
 
 	// Setup Dear ImGui style

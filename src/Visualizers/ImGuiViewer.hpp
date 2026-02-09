@@ -47,6 +47,10 @@ private:
 	void DrawStatsWindow();
 	/// Executes on the UI thread
 	void DrawVisualizationWindow();
+	/// Executes on the UI thread
+	void BeginFullscreenDockspace();
+	/// Executes on the UI thread
+	void BuildInitialLayout();
 
 private:
 	std::vector<Particle<2>> m_Particles;
@@ -56,6 +60,7 @@ private:
 	std::atomic<bool> m_Running = false;
 	std::thread m_ImguiThread;
 	std::mutex m_Mutex;
+	unsigned int m_DockspaceID = 0, m_DockIDLeft = 0, m_DockIDCenter = 0;
 
 	bool m_Changed = false;
 
