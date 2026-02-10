@@ -28,6 +28,12 @@ public:
 		float TimeStep = 0.0006f;
 		float SmoothingLength = 0.007f;
 		float PressureTol = 1e-2f;
+		float FinalTime = 10.0;
+	};
+
+	struct Profiling
+	{
+		stdc::nanoseconds Neighbors, Initialize, IterativePressure;
 	};
 
 	friend class NeighborFinder<D>;
@@ -48,12 +54,12 @@ private: // Simulation functions
 	/*void BuildYWall(float x, float begin, float end, float delta);
 	void BuildXWall(float y, float begin, float end, float delta);*/
 
-	void Step(int step_num);
+	void Step();
 
 
 	// Functions handling the three parts of the scheme for all the particles
 	void FindAllNeighbors();
-	void Initialize(int step_num);
+	void Initialize();
 	void IterativePressure();
 	// Helper functions for the subsequent particles
 	void ComputeBoundaryPsi(idx_t i);
@@ -75,6 +81,8 @@ private:
 
 	size_t m_Frame = 0;
 	float m_Time = 0.0f;
+
+	Profiling m_Profiling;
 
 	Params m_Params;
 	Command<D> m_Command;
@@ -107,6 +115,7 @@ public: // Generic interface
 
 	float  GetTime()  const { return m_Time; }
 	size_t GetFrame() const { return m_Frame; }
+	Profiling GetProfiling() const { return m_Profiling; }
 
 	void ApplyCommand(const Command<D>& cmd) { m_Command = cmd; }
 
@@ -136,25 +145,44 @@ inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf)
 { }
 
 
+struct Time
+{
+	Time(stdc::nanoseconds* res) {
+		Res = res;
+		Start = stdclock::now();
+	}
+	~Time() {
+		*Res = stdclock::now() - Start;
+	}
+
+	stdc::nanoseconds* Res = nullptr;
+	stdc::time_point<stdclock> Start;
+};
 
 template <size_t D>
 inline void SPHSimulation<D>::Start()
 {
-	// TODO: Specify final timestep, and display in the ui the current progress (percentage and value)
-	for (int i = 0; i < 400000; i++) {
-		Step(i);
-	}
+	while (m_Time < m_Params.FinalTime)
+		Step();
 }
 template <size_t D>
-inline void SPHSimulation<D>::Step(int step_num)
+inline void SPHSimulation<D>::Step()
 {
 	NotifyStartFrame();
 
-	// Split the particles in a grid of subdomains.
-	m_NeighborFinder->InitializeFrame(this);
-	FindAllNeighbors();
-	Initialize(step_num);
-	IterativePressure();
+	{
+		Time time(&m_Profiling.Neighbors);
+		m_NeighborFinder->InitializeFrame(this);
+		FindAllNeighbors();
+	}
+	{
+		Time time(&m_Profiling.Initialize);
+		Initialize();
+	}
+	{
+		Time time(&m_Profiling.IterativePressure);
+		IterativePressure();
+	}
 
 	m_Time += m_Params.TimeStep;
 	m_Frame++;
@@ -171,7 +199,7 @@ inline void SPHSimulation<D>::FindAllNeighbors()
 }
 
 template <size_t D>
-inline void SPHSimulation<D>::Initialize(int step_num)
+inline void SPHSimulation<D>::Initialize()
 {
 	/*
 	 * Non-iterative part of the timestep
@@ -185,7 +213,7 @@ inline void SPHSimulation<D>::Initialize(int step_num)
 		if (m_Particles[i].Type == SOLID)
 			ComputeBoundaryPsi(i);
 	}
-	if (step_num == 0)
+	if (m_Frame == 0)
 	{
 		for (int i = 0; i < m_Particles.size(); i++)
 		{

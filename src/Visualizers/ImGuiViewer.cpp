@@ -1,6 +1,8 @@
 #include "ImGuiViewer.hpp"
 #include "SPHSimulation.hpp"
 
+#include <format>
+
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
 // (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
 
@@ -33,10 +35,12 @@
 #endif
 
 
+#include "ImGuiWidgets.hpp"
+
+
 
 static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 static Particle<2>::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
-
 
 
 void ImGuiViewer::Attach(SPHSimulation<2>* sim)
@@ -74,48 +78,12 @@ void ImGuiViewer::OnStartFrame()
 		return;
 
 	m_SimParams = m_Sim->GetParams();
+	m_SimTime = m_Sim->GetTime();
+	m_SimProfiling = m_Sim->GetProfiling();
 
 	m_SimFrameStart = stdclock::now();
 }
 
-
-static float Lerp(float a, float b, float t)
-{
-	return a + (b - a) * t;
-}
-static void DrawLegend(ImVec2 size)
-{
-	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	ImVec2 p0 = ImGui::GetCursorScreenPos();
-	ImVec2 p1 = ImVec2(p0.x + size.x, p0.y + size.y);
-
-	const int steps = 100; // more = smoother
-
-	for (int i = 0; i < steps; ++i)
-	{
-		float t0 = (float)i / steps;
-		float t1 = (float)(i + 1) / steps;
-
-		// Long-way hue interpolation: 2/3 -> 0
-		float h0 = (2.0f / 3.0f) * (1.0f - t0);
-		float h1 = (2.0f / 3.0f) * (1.0f - t1);
-
-		ImU32 c0 = ImColor::HSV(h0, 1.0f, 1.0f);
-		ImU32 c1 = ImColor::HSV(h1, 1.0f, 1.0f);
-
-		float x0 = Lerp(p0.x, p1.x, t0);
-		float x1 = Lerp(p0.x, p1.x, t1);
-
-		draw_list->AddRectFilledMultiColor(
-			ImVec2(x0, p0.y),
-			ImVec2(x1, p1.y),
-			c0, c1, c1, c0
-		);
-	}
-
-	// Advance layout cursor
-	ImGui::Dummy(size);
-}
 
 
 void ImGuiViewer::DrawStatsWindow()
@@ -125,38 +93,81 @@ void ImGuiViewer::DrawStatsWindow()
 #endif
 	ImGui::Begin("SPH Stats");
 
+	ImGui::Separator();
 	{
-		std::lock_guard<std::mutex> lock(m_Mutex);
+		m_Changed |= ImGui::SliderFloat("Rest Density", &m_SimParams.RestDensity, 500, 1500, "%.0f");
+		m_Changed |= ImGui::SliderFloat("Stiffness", &m_SimParams.Stiffness, 0, 1, "%.5f");
+		m_Changed |= ImGui::SliderFloat("Viscosity", &m_SimParams.Viscosity, 0, 1, "%.5f");
+		m_Changed |= ImGui::SliderFloat("Timestep", &m_SimParams.TimeStep, 0.0000f, 0.001f, "%.7f");
+		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength, 0.0001f, 0.5f, "%.7f");
+		m_Changed |= ImGui::SliderFloat("Final Time", &m_SimParams.FinalTime, 0.0f, 100.0f, "%.2f");
+	}
 
-		m_Changed |= ImGui::SliderFloat("Rest Density"    , &m_SimParams.RestDensity    , 500      ,   1500       , "%.0f");
-		m_Changed |= ImGui::SliderFloat("Stiffness"       , &m_SimParams.Stiffness      ,   0      ,      1       , "%.5f");
-		m_Changed |= ImGui::SliderFloat("Viscosity"       , &m_SimParams.Viscosity      ,   0      ,      1       , "%.5f");
-		m_Changed |= ImGui::SliderFloat("dt"              , &m_SimParams.TimeStep       ,   0.0000f,      0.001f  , "%.7f");
-		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength,   0.0001f,      0.5f    , "%.7f");
-		
-		ImGui::SliderFloat("Max UI Velocity" , &m_MaxVelocity              ,   0      ,     30       , "%.5f");
-		ImGui::SliderFloat("Max UI Pressure" , &m_MaxPressure              ,   0      , 100000       , "%.0f");
-
+	ImGui::Separator();
+	{
 		ImGui::Text("Particles: %d", m_Particles.size());
-		ImGui::Text("UI  FPS: %.1f", ImGui::GetIO().Framerate);
-		ImGui::Text("SPH FPS: %.1f", m_SimFPS);
-		if (!m_Particles.empty())
-		{
-			ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
-			ImGui::Text("Velocity: %.3f %.3f", m_Particles[0].Velocity.x, m_Particles[0].Velocity.y);
-		}
-		if (m_Cmd.Type != Command<2>::NONE)
-			ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
-		else
-			ImGui::Text("Command: NONE");
+		ImGui::Text("UI / SPH FPS: %.1f %.1f", ImGui::GetIO().Framerate, m_SimFPS);
 
+		{
+			float progress = 0.0f;
+			if (m_SimParams.FinalTime > 0.0f)
+				progress = m_SimTime / m_SimParams.FinalTime;
+			progress = ImClamp(progress, 0.0f, 1.0f);
+
+			std::string label = std::format("{:.2f}/{:.2f}s", m_SimTime, m_SimParams.FinalTime);
+			ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), label.c_str());
+			//ImGui::Text("Progress: %.2f / %.2f sec", m_SimTime, m_SimParams.FinalTime);
+		}
+
+		{
+			std::vector<float> parts = { to<float>(m_SimProfiling.Neighbors.count()), to<float>(m_SimProfiling.Initialize.count()), to<float>(m_SimProfiling.IterativePressure.count()) };
+			int hovering = StackedProgressBar(parts);
+			if (hovering != -1)
+			{
+				static std::string labels[] = { "Neighbors", "Initialize", "Iterative Pressure" };
+
+				float sum = 0.0f;
+				for (float v : parts)
+					sum += ImMax(v, 0.0f);
+
+				ImGui::BeginTooltip();
+				std::string label = std::format("{}: {:.1f}%%", labels[hovering], parts[hovering] / sum * 100);
+				ImGui::Text(label.c_str());
+				ImGui::EndTooltip();
+			}
+		}
+	}
+	
+	ImGui::Separator();
+	if (!m_Particles.empty())
+	{
+		ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
+		ImGui::Text("Velocity: %.3f %.3f", m_Particles[0].Velocity.x, m_Particles[0].Velocity.y);
+	}
+	if (m_Cmd.Type != Command<2>::NONE)
+		ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
+	else
+		ImGui::Text("Command: NONE");
+
+	ImGui::Separator();
+	{
 		const char* items[] = { "Subdomain", "Pressure", "Velocity" };
 		static int coloring_param_int = 2;
 		ImGui::Combo("Coloring Parameter", &coloring_param_int, items, IM_ARRAYSIZE(items));
 		m_ColoringParam = (ColoringParam)coloring_param_int;
 
-		DrawLegend(ImVec2(200.0f, 16.0f));
+		if (m_ColoringParam == PRESSURE)
+		{
+			ImGui::SliderFloat("Max UI Pressure", &m_MaxPressure, 0, 20000, "%.0f");
+			DrawLegendScale(ImVec2(200.0f, 16.0f), 0, m_MaxPressure);
+		}
+		else if (m_ColoringParam == VELOCITY)
+		{
+			ImGui::SliderFloat("Max UI Velocity", &m_MaxVelocity, 0, 5, "%.5f");
+			DrawLegendScale(ImVec2(200.0f, 16.0f), 0, m_MaxVelocity);
+		}
 	}
+
 
 	ImGui::End();
 }
@@ -330,8 +341,12 @@ void ImGuiViewer::Loop()
 		BuildInitialLayout();
 		BeginFullscreenDockspace();
 
-		DrawStatsWindow();
-		DrawVisualizationWindow();
+		{
+			std::lock_guard<std::mutex> lock(m_Mutex);
+
+			DrawStatsWindow();
+			DrawVisualizationWindow();
+		}
 
 		// Rendering
 		ImGui::Render();

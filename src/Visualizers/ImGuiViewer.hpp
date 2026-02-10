@@ -66,9 +66,11 @@ private:
 
 	float m_SimFPS = 0;
 	stdc::time_point<stdclock> m_SimFrameStart;
-	float m_MaxVelocity = 10, m_MaxPressure = 50000;
+	float m_MaxVelocity = 2.5, m_MaxPressure = 10000;
 	Command<2> m_Cmd;
 
+	float m_SimTime = 0;
+	SPHSimulation<2>::Profiling m_SimProfiling;
 	SPHSimulation<2>::Params m_SimParams;
 
 	enum ColoringParam

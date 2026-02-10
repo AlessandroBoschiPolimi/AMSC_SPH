@@ -2,36 +2,6 @@
 #include "NeighborFinder.hpp"
 
 
-
-template <size_t D>
-struct data_impl;
-
-template <>
-struct data_impl<2> {
-	static constexpr coord<int, 2> value[3 * 3] = {
-		{ -1, -1 }, { -1,  0 }, { -1, +1 },
-		{  0, -1 }, {  0,  0 }, {  0, +1 },
-		{ +1, -1 }, { +1,  0 }, { +1, +1 }
-	};
-};
-
-template <>
-struct data_impl<3> {
-	static constexpr coord<int, 3> value[3 * 3 * 3] = {
-		{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
-		{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
-		{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
-
-		{ 0,-1,-1}, { 0,-1,0}, { 0,-1,1},
-		{ 0, 0,-1}, { 0, 0,0}, { 0, 0,1},
-		{ 0, 1,-1}, { 0, 1,0}, { 0, 1,1},
-
-		{ 1,-1,-1}, { 1,-1,0}, { 1,-1,1},
-		{ 1, 0,-1}, { 1, 0,0}, { 1, 0,1},
-		{ 1, 1,-1}, { 1, 1,0}, { 1, 1,1}
-	};
-};
-
 template <size_t D>
 class SpatialHashing : public NeighborFinder<D>
 {
@@ -41,6 +11,33 @@ public:
 	using     cell_t = std::vector<idx_t>;
 	using cell_pos_t = coord<int, D>;
 	using     grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<D>>;
+
+	template <size_t T = D>
+	struct data_impl;
+	template <>
+	struct data_impl<2> {
+		static constexpr coord<int, 2> value[3 * 3] = {
+			{ -1, -1 }, { -1,  0 }, { -1, +1 },
+			{  0, -1 }, {  0,  0 }, {  0, +1 },
+			{ +1, -1 }, { +1,  0 }, { +1, +1 }
+		};
+	};
+	template <>
+	struct data_impl<3> {
+		static constexpr coord<int, 3> value[3 * 3 * 3] = {
+			{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
+			{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
+			{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
+
+			{ 0,-1,-1}, { 0,-1,0}, { 0,-1,1},
+			{ 0, 0,-1}, { 0, 0,0}, { 0, 0,1},
+			{ 0, 1,-1}, { 0, 1,0}, { 0, 1,1},
+
+			{ 1,-1,-1}, { 1,-1,0}, { 1,-1,1},
+			{ 1, 0,-1}, { 1, 0,0}, { 1, 0,1},
+			{ 1, 1,-1}, { 1, 1,0}, { 1, 1,1}
+		};
+	};
 
 
 public:
