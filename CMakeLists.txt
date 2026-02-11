@@ -8,9 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Source files
 # --------------------------------------------------
 file(GLOB_RECURSE SRC_FILES
-	src/*.cpp
-)
-
+	src/*.cpp)
+find_package(OpenMP REQUIRED)
 # --------------------------------------------------
 # ImGui sources
 # --------------------------------------------------
@@ -85,6 +84,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME}
 	glad
 	glfw
+	OpenMP::OpenMP_CXX
 	# virtualterminal
 )
 

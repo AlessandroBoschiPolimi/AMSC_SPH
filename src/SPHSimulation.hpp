@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cmath>
+#include <omp.h>
 #include "Observer.hpp"
 #include "Kernel.hpp"
 
@@ -162,31 +163,49 @@ struct Time
 template <size_t D>
 inline void SPHSimulation<D>::Start()
 {
-	while (m_Time < m_Params.FinalTime)
-		Step();
+	#pragma omp parallel
+	{
+		while (m_Time < m_Params.FinalTime)
+			Step();
+	}
 }
 template <size_t D>
 inline void SPHSimulation<D>::Step()
-{
-	NotifyStartFrame();
+{	
+	#pragma omp single
+	{
+		NotifyStartFrame();
+	}
 
 	{
-		Time time(&m_Profiling.Neighbors);
-		m_NeighborFinder->InitializeFrame(this);
+		#pragma omp single
+		{
+			Time time(&m_Profiling.Neighbors);
+			m_NeighborFinder->InitializeFrame(this);
+		}
 		FindAllNeighbors();
 	}
 	{
-		Time time(&m_Profiling.Initialize);
+		#pragma omp single
+		{
+			Time time(&m_Profiling.Initialize);
+		}
 		Initialize();
 	}
 	{
-		Time time(&m_Profiling.IterativePressure);
+		#pragma omp single
+		{
+			Time time(&m_Profiling.IterativePressure);
+		}
 		IterativePressure();
 	}
 
-	m_Time += m_Params.TimeStep;
-	m_Frame++;
-	NotifyEndFrame();
+	#pragma omp single
+	{
+		m_Time += m_Params.TimeStep;
+		m_Frame++;
+		NotifyEndFrame();
+	}
 }
 
 
@@ -194,7 +213,7 @@ inline void SPHSimulation<D>::Step()
 template <size_t D>
 inline void SPHSimulation<D>::FindAllNeighbors()
 {
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
 		m_NeighborFinder->Find(i, m_Particles[i].Neighbors);
 }
 
@@ -208,32 +227,32 @@ inline void SPHSimulation<D>::Initialize()
 	 * Additionally, we need to compute 'Mass' of boundary particles (ParticlePsi)
 	 * In the first step, we also need to initialize density
 	 */
-	for (int i = 0; i < m_Particles.size(); i++)
-	{
-		if (m_Particles[i].Type == SOLID)
-			ComputeBoundaryPsi(i);
-	}
 	if (m_Frame == 0)
 	{
-		for (int i = 0; i < m_Particles.size(); i++)
+		for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
 		{
 			if (m_Particles[i].Type == FLUID)
 				ComputeDensity(i);
+			else
+				ComputeBoundaryPsi(i);
 		}
+		#pragma omp barrier
 	}
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
 	{
 		if (m_Particles[i].Type == FLUID) {
 			ComputeAccelerationViscosity(i);
 		}
 	}
-	for (int i = 0; i < m_Particles.size(); i++)
+	#pragma omp barrier
+	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
 	{
 		if (m_Particles[i].Type == FLUID) {
 			UpdateVelocityInitial(i);
 			UpdatePositionInitial(i);
 		}
 	}
+	#pragma omp barrier
 }
 template <size_t D>
 inline void SPHSimulation<D>::IterativePressure()
@@ -243,24 +262,28 @@ inline void SPHSimulation<D>::IterativePressure()
 	 * After computing initial forces and moving particles, compute dansity and pressure
 	   and move particles again.
 	 */
-	for (int i = 0; i < m_Particles.size(); i++) {
+
+	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	{
 		if (m_Particles[i].Type == SOLID)
 			continue;
 		ComputeDensity(i);
 		ComputePressure(i);
 	}
-
+	#pragma omp barrier
 	if (m_Command.Type != Command<D>::NONE)
-		for (int i = 0; i < m_Particles.size(); i++)
+		for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
 			EvaluateCommand(i);
-
-	for (int i = 0; i < m_Particles.size(); i++) {
+	#pragma omp barrier
+	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	{
 		if (m_Particles[i].Type == SOLID)
 			continue;
 		ComputeAccelerationPressure(i);
 		UpdateVelocityIteration(i);
 		UpdatePositionIteration(i);
 	}
+	#pragma omp barrier
 }
 
 template <size_t D>
@@ -311,7 +334,7 @@ inline void SPHSimulation<D>::ComputePressure(idx_t i)
 	 */
 	m_Particles[i].Pressure = std::max(m_Params.Stiffness *
 		(std::pow(m_Particles[i].Density /
-			m_Params.RestDensity, 7.0f) - 1), 0.0f);
+			(m_Params.RestDensity), 7.0f) - 1), 0.0f);
 }
 
 template <size_t D>
