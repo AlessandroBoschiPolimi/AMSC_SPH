@@ -217,7 +217,11 @@ inline void SPHSimulation<D>::FindAllNeighbors()
 {
 	#pragma omp for
 	for (int i = 0; i < m_Particles.size(); i++)
+	{
+		if (m_Particles[i].Type == SOLID && m_Frame > 0)
+			continue;
 		m_NeighborFinder->Find(i, m_Particles[i].Neighbors);
+	}
 }
 
 template <size_t D>
