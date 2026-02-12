@@ -1,6 +1,31 @@
 #pragma once
 #include "NeighborFinder.hpp"
+template <size_t T>
+struct data_impl;
+template <>
+struct data_impl<2> {
+	static constexpr coord<int, 2> value[3 * 3] = {
+		{ -1, -1 }, { -1,  0 }, { -1, +1 },
+		{  0, -1 }, {  0,  0 }, {  0, +1 },
+		{ +1, -1 }, { +1,  0 }, { +1, +1 }
+	};
+};
+template <>
+struct data_impl<3> {
+	static constexpr coord<int, 3> value[3 * 3 * 3] = {
+		{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
+		{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
+		{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
 
+		{ 0,-1,-1}, { 0,-1,0}, { 0,-1,1},
+		{ 0, 0,-1}, { 0, 0,0}, { 0, 0,1},
+		{ 0, 1,-1}, { 0, 1,0}, { 0, 1,1},
+
+		{ 1,-1,-1}, { 1,-1,0}, { 1,-1,1},
+		{ 1, 0,-1}, { 1, 0,0}, { 1, 0,1},
+		{ 1, 1,-1}, { 1, 1,0}, { 1, 1,1}
+	};
+};
 
 template <size_t D>
 class SpatialHashing : public NeighborFinder<D>
@@ -12,32 +37,7 @@ public:
 	using cell_pos_t = coord<int, D>;
 	using     grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<D>>;
 
-	template <size_t T = D>
-	struct data_impl;
-	template <>
-	struct data_impl<2> {
-		static constexpr coord<int, 2> value[3 * 3] = {
-			{ -1, -1 }, { -1,  0 }, { -1, +1 },
-			{  0, -1 }, {  0,  0 }, {  0, +1 },
-			{ +1, -1 }, { +1,  0 }, { +1, +1 }
-		};
-	};
-	template <>
-	struct data_impl<3> {
-		static constexpr coord<int, 3> value[3 * 3 * 3] = {
-			{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
-			{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
-			{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
 
-			{ 0,-1,-1}, { 0,-1,0}, { 0,-1,1},
-			{ 0, 0,-1}, { 0, 0,0}, { 0, 0,1},
-			{ 0, 1,-1}, { 0, 1,0}, { 0, 1,1},
-
-			{ 1,-1,-1}, { 1,-1,0}, { 1,-1,1},
-			{ 1, 0,-1}, { 1, 0,0}, { 1, 0,1},
-			{ 1, 1,-1}, { 1, 1,0}, { 1, 1,1}
-		};
-	};
 
 
 public:
@@ -67,14 +67,26 @@ inline void SpatialHashing<D>::InitializeFrame(SPHSimulation<D>* sim)
 
 	const auto& particles = m_Sim->GetParticles();
 	float h = m_Sim->GetSmoothingLength();
-
+	#pragma omp master
+	{
 		m_Grid.clear();
 		m_Grid.reserve(particles.size());
-
-	for (size_t i = 0; i < particles.size(); ++i) {
-		cell_pos_t c = GetCellPosition(particles[i].Position, h);
-		m_Grid[c].push_back(i);
 	}
+	grid_t m_Grid_local;
+	#pragma omp for
+	for (size_t i = 0; i < particles.size(); i++) 
+	{
+		cell_pos_t c = GetCellPosition(particles[i].Position, h);
+		m_Grid_local[c].push_back(i);
+	}
+    #pragma omp critical
+    {
+        for (auto& [cell, vec] : m_Grid_local)
+        {
+		m_Grid[cell].insert(m_Grid[cell].end(), vec.begin(), vec.end());
+        }
+    }
+    #pragma omp barrier
 }
 
 
