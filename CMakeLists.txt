@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # --------------------------------------------------
 file(GLOB_RECURSE SRC_FILES
 	src/*.cpp)
-find_package(OpenMP REQUIRED)
+
 # --------------------------------------------------
 # ImGui sources
 # --------------------------------------------------
@@ -87,6 +87,11 @@ target_link_libraries(${PROJECT_NAME}
 	OpenMP::OpenMP_CXX
 	# virtualterminal
 )
+
+# --------------------------------------------------
+# OpenMP
+# --------------------------------------------------
+find_package(OpenMP REQUIRED)
 
 # --------------------------------------------------
 # Platform-specific OpenGL

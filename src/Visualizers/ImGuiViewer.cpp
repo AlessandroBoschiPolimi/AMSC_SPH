@@ -52,9 +52,14 @@ void ImGuiViewer::Attach(SPHSimulation<2>* sim)
 }
 void ImGuiViewer::OnEndFrame()
 {
-	auto simFramEnd = stdclock::now();
-	auto dt = simFramEnd - m_SimFrameStart;
-	m_SimFPS = 1'000'000'000.0 / dt.count();
+	m_SimTimeCounter += stdclock::now() - m_SimFrameStart;
+	m_SimFramesCounter++;
+	if (m_SimTimeCounter > 500ms)
+	{
+		m_SimFPS = to<float>(m_SimFramesCounter) * 1'000'000'000.0 / m_SimTimeCounter.count();
+		m_SimFramesCounter = 0;
+		m_SimTimeCounter = 0ns;
+	}
 
 	std::lock_guard<std::mutex> lock(m_Mutex);
 	if (m_Sim == nullptr)

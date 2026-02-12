@@ -65,6 +65,8 @@ private:
 	bool m_Changed = false;
 
 	float m_SimFPS = 0;
+	int m_SimFramesCounter = 0;
+	stdc::nanoseconds m_SimTimeCounter = 0ns;
 	stdc::time_point<stdclock> m_SimFrameStart;
 	float m_MaxVelocity = 2.5, m_MaxPressure = 10000;
 	Command<2> m_Cmd;

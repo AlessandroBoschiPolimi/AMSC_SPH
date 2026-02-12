@@ -10,18 +10,26 @@
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
 
+#include <cstring>
+
+
 
 #define SIZE 2
 
+void ParseArgs(int argc, char** argv);
+
+
 // Main code
-int main(int, char**)
+int main(int argc, char** argv)
 {
+	ParseArgs(argc, argv);
+
 	SpatialHashing<SIZE> nf;
 
 	SPHSimulation<SIZE> sph(&nf);
 
 
-	std::cout << fs::current_path() << '\n';
+	//std::cout << fs::current_path() << '\n';
 
 #if SIZE == 2
 	BoxInitializer<SIZE> initializer;
@@ -41,4 +49,18 @@ int main(int, char**)
 	sph.Start();
 
 	return 0;
+}
+
+
+void ParseArgs(int argc, char** argv)
+{
+	for (int i = 1; i < argc; true)
+	{
+		char* line = argv[i++];
+		if (std::strcmp(line, "--omp-threads") == 0 && i < argc)
+		{
+			int count = std::stoi(argv[i++]);
+			omp_set_num_threads(count);
+		}
+	}
 }

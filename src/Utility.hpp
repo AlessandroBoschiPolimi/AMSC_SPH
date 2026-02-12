@@ -357,8 +357,9 @@ void print_time(const stdc::nanoseconds& time, std::ostream& out = std::cout);
 
 
 // FILE
+#ifdef HAS_CPP17
 std::string ReadFile(const fs::path& file);
-
+#endif
 
 
 struct Time
