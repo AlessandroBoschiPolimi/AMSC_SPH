@@ -167,12 +167,9 @@ inline void SPHSimulation<D>::Step()
 	{
 		stdc::time_point<stdclock> start;
 		#pragma omp master
-		{
-			start = stdclock::now();
-			m_NeighborFinder->InitializeFrame(this);
-		}
+		{ start = stdclock::now(); }
 		#pragma omp barrier
-		
+		m_NeighborFinder->InitializeFrame(this);
 		FindAllNeighbors();
 
 		#pragma omp barrier
@@ -243,7 +240,6 @@ inline void SPHSimulation<D>::Initialize()
 			else
 				ComputeBoundaryPsi(i);
 		}
-		#pragma omp barrier
 	}
 	#pragma omp for
 	for (int i = 0; i < m_Particles.size(); i++)
@@ -252,7 +248,6 @@ inline void SPHSimulation<D>::Initialize()
 			ComputeAccelerationViscosity(i);
 		}
 	}
-	#pragma omp barrier
 	#pragma omp for
 	for (int i = 0; i < m_Particles.size(); i++)
 	{
@@ -261,7 +256,6 @@ inline void SPHSimulation<D>::Initialize()
 			UpdatePositionInitial(i);
 		}
 	}
-	#pragma omp barrier
 }
 template <size_t D>
 inline void SPHSimulation<D>::IterativePressure()
@@ -280,14 +274,12 @@ inline void SPHSimulation<D>::IterativePressure()
 		ComputeDensity(i);
 		ComputePressure(i);
 	}
-	#pragma omp barrier
 	if (m_Command.Type != Command<D>::NONE)
 	{
 		#pragma omp for
 		for (int i = 0; i < m_Particles.size(); i++)
 			EvaluateCommand(i);
 	}
-	#pragma omp barrier
 	#pragma omp for
 	for (int i = 0; i < m_Particles.size(); i++)
 	{
@@ -297,7 +289,6 @@ inline void SPHSimulation<D>::IterativePressure()
 		UpdateVelocityIteration(i);
 		UpdatePositionIteration(i);
 	}
-	#pragma omp barrier
 }
 
 template <size_t D>
