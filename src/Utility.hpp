@@ -360,6 +360,23 @@ void print_time(const stdc::nanoseconds& time, std::ostream& out = std::cout);
 std::string ReadFile(const fs::path& file);
 
 
+
+struct Time
+{
+	Time(stdc::nanoseconds* res) {
+		Res = res;
+		Start = stdclock::now();
+	}
+	~Time() {
+		*Res = stdclock::now() - Start;
+	}
+
+	stdc::nanoseconds* Res = nullptr;
+	stdc::time_point<stdclock> Start;
+};
+
+
+
 // ################################################################## LOGGING ##################################################################
 template <typename T> /*requires std::is_arithmetic_v<T>*/
 std::ostream& operator<<(std::ostream& out, const std::vector<T>& data)

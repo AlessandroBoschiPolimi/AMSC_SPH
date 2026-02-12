@@ -34,7 +34,7 @@ public:
 
 	struct Profiling
 	{
-		stdc::nanoseconds Neighbors, Initialize, IterativePressure;
+		stdc::nanoseconds Neighbors = 0ns, Initialize = 0ns, IterativePressure = 0ns;
 	};
 
 	friend class NeighborFinder<D>;
@@ -146,19 +146,6 @@ inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf)
 { }
 
 
-struct Time
-{
-	Time(stdc::nanoseconds* res) {
-		Res = res;
-		Start = stdclock::now();
-	}
-	~Time() {
-		*Res = stdclock::now() - Start;
-	}
-
-	stdc::nanoseconds* Res = nullptr;
-	stdc::time_point<stdclock> Start;
-};
 
 template <size_t D>
 inline void SPHSimulation<D>::Start()
@@ -178,26 +165,44 @@ inline void SPHSimulation<D>::Step()
 	}
 
 	{
-		#pragma omp single
+		stdc::time_point<stdclock> start;
+		#pragma omp master
 		{
-			Time time(&m_Profiling.Neighbors);
+			start = stdclock::now();
 			m_NeighborFinder->InitializeFrame(this);
 		}
+		#pragma omp barrier
+		
 		FindAllNeighbors();
+
+		#pragma omp barrier
+		#pragma omp master
+		{ m_Profiling.Neighbors = stdclock::now() - start; }
+		#pragma omp barrier
 	}
 	{
-		#pragma omp single
-		{
-			Time time(&m_Profiling.Initialize);
-		}
+		stdc::time_point<stdclock> start;
+		#pragma omp master
+		{ start = stdclock::now(); }
+		#pragma omp barrier
+
 		Initialize();
+
+		#pragma omp master
+		{ m_Profiling.Initialize = stdclock::now() - start; }
+		#pragma omp barrier
 	}
 	{
-		#pragma omp single
-		{
-			Time time(&m_Profiling.IterativePressure);
-		}
+		stdc::time_point<stdclock> start;
+		#pragma omp master
+		{ start = stdclock::now(); }
+		#pragma omp barrier
+
 		IterativePressure();
+
+		#pragma omp master
+		{ m_Profiling.IterativePressure = stdclock::now() - start; }
+		#pragma omp barrier
 	}
 
 	#pragma omp single
@@ -213,7 +218,8 @@ inline void SPHSimulation<D>::Step()
 template <size_t D>
 inline void SPHSimulation<D>::FindAllNeighbors()
 {
-	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	#pragma omp for
+	for (int i = 0; i < m_Particles.size(); i++)
 		m_NeighborFinder->Find(i, m_Particles[i].Neighbors);
 }
 
@@ -229,7 +235,8 @@ inline void SPHSimulation<D>::Initialize()
 	 */
 	if (m_Frame == 0)
 	{
-		for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+		#pragma omp for
+		for (int i = 0; i < m_Particles.size(); i++)
 		{
 			if (m_Particles[i].Type == FLUID)
 				ComputeDensity(i);
@@ -238,14 +245,16 @@ inline void SPHSimulation<D>::Initialize()
 		}
 		#pragma omp barrier
 	}
-	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	#pragma omp for
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
 		if (m_Particles[i].Type == FLUID) {
 			ComputeAccelerationViscosity(i);
 		}
 	}
 	#pragma omp barrier
-	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	#pragma omp for
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
 		if (m_Particles[i].Type == FLUID) {
 			UpdateVelocityInitial(i);
@@ -263,7 +272,8 @@ inline void SPHSimulation<D>::IterativePressure()
 	   and move particles again.
 	 */
 
-	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	#pragma omp for
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
 		if (m_Particles[i].Type == SOLID)
 			continue;
@@ -272,10 +282,14 @@ inline void SPHSimulation<D>::IterativePressure()
 	}
 	#pragma omp barrier
 	if (m_Command.Type != Command<D>::NONE)
-		for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	{
+		#pragma omp for
+		for (int i = 0; i < m_Particles.size(); i++)
 			EvaluateCommand(i);
+	}
 	#pragma omp barrier
-	for (int i = omp_get_thread_num(); i < m_Particles.size(); i+= omp_get_num_threads())
+	#pragma omp for
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
 		if (m_Particles[i].Type == SOLID)
 			continue;

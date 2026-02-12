@@ -68,8 +68,8 @@ inline void SpatialHashing<D>::InitializeFrame(SPHSimulation<D>* sim)
 	const auto& particles = m_Sim->GetParticles();
 	float h = m_Sim->GetSmoothingLength();
 
-	m_Grid.clear();
-	m_Grid.reserve(particles.size());
+		m_Grid.clear();
+		m_Grid.reserve(particles.size());
 
 	for (size_t i = 0; i < particles.size(); ++i) {
 		cell_pos_t c = GetCellPosition(particles[i].Position, h);
