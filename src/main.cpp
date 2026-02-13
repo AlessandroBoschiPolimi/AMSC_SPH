@@ -6,6 +6,7 @@
 #include "Visualizers/ImGuiViewer.hpp"
 
 #include "Neighbors/SpatialHashing.hpp"
+#include "Neighbors/MortonSorting.hpp"
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
@@ -23,8 +24,17 @@ void ParseArgs(int argc, char** argv);
 int main(int argc, char** argv)
 {
 	ParseArgs(argc, argv);
+	
+	std::cout << "OpenMP Max Threads: " << omp_get_max_threads() << '\n';
 
-	SpatialHashing<SIZE> nf;
+	
+	//SpatialHashing<SIZE> nf;
+#if SIZE == 2
+	// TODO: define first the initializer, and query the domain min and max from it
+	MortonSorting<SIZE> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+#else
+	MortonSorting<SIZE> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
+#endif
 
 	SPHSimulation<SIZE> sph(&nf);
 

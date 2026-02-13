@@ -35,6 +35,22 @@
 			}
 		},
 		{
+			"name": "windows-dist",
+			"displayName": "Windows Dist",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build/dist",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"CMAKE_C_COMPILER": "cl",
+				"CMAKE_CXX_COMPILER": "cl"
+			},
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Windows"
+			}
+		},
+		{
 			"name": "linux-debug",
 			"displayName": "Linux Debug",
 			"generator": "Unix Makefiles",
@@ -55,6 +71,20 @@
 			"binaryDir": "${sourceDir}/build/release",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release"
+			},
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Linux"
+			}
+		},
+		{
+			"name": "linux-dist",
+			"displayName": "Linux Dist",
+			"generator": "Unix Makefiles",
+			"binaryDir": "${sourceDir}/build/dist",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo"
 			},
 			"condition": {
 				"type": "equals",

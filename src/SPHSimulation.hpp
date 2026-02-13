@@ -79,6 +79,8 @@ private: // Simulation functions
 private:
 	std::vector<Observer<D>*> m_Observers;
 	std::vector<Particle<D>> m_Particles;
+	std::vector<std::vector<idx_t>> m_Neighbors;
+
 
 	size_t m_Frame = 0;
 	float m_Time = 0.0f;
@@ -113,6 +115,7 @@ public: // Generic interface
 	float GetSmoothingLength() const { return m_Params.SmoothingLength; }
 
 	const std::vector<Particle<D>>& GetParticles() const { return m_Particles; }
+	std::vector<Particle<D>>& GetParticles() { return m_Particles; }
 
 	float  GetTime()  const { return m_Time; }
 	size_t GetFrame() const { return m_Frame; }
@@ -169,7 +172,9 @@ inline void SPHSimulation<D>::Step()
 		#pragma omp master
 		{ start = stdclock::now(); }
 		#pragma omp barrier
+
 		m_NeighborFinder->InitializeFrame(this);
+		#pragma omp barrier
 		FindAllNeighbors();
 
 		#pragma omp barrier
@@ -220,7 +225,7 @@ inline void SPHSimulation<D>::FindAllNeighbors()
 	{
 		if (m_Particles[i].Type == SOLID && m_Frame > 0)
 			continue;
-		m_NeighborFinder->Find(i, m_Particles[i].Neighbors);
+		m_NeighborFinder->Find(i, m_Neighbors[i]);
 	}
 }
 
@@ -303,7 +308,7 @@ inline void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
 	   to implement collisions
 	 */
 	float V = 0;
-	for (auto& j : m_Particles[i].Neighbors)
+	for (auto& j : m_Neighbors[i])
 	{
 		if (m_Particles[j].Type == SOLID)
 			V += W_Ker.GetValue(m_Particles[i], m_Particles[j]);
@@ -320,7 +325,7 @@ inline void SPHSimulation<D>::ComputeDensity(idx_t i)
 	 * For security, clamps the value in the end to avoid disappearing particles
 	 */
 	m_Particles[i].Density = m_Particles[i].Mass * W_Ker.GetValue(m_Particles[i], m_Particles[i]);
-	for (auto& j : m_Particles[i].Neighbors) {
+	for (auto& j : m_Neighbors[i]) {
 		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
 		if (m_Particles[j].Type == FLUID)
 		{
@@ -354,7 +359,7 @@ inline void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
 	 * [2] has typos in that formula
 	 */
 	m_Particles[i].A_visc = vec_t{ 0, 0 };
-	for (auto& j : m_Particles[i].Neighbors)
+	for (auto& j : m_Neighbors[i])
 	{
 		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
 		vec_t v_ij = m_Particles[i].Velocity - m_Particles[j].Velocity;
@@ -386,7 +391,7 @@ inline void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
 	 * Boundary handling according to [2]
 	 */
 	m_Particles[i].A_press = vec_t{ 0, 0 };
-	for (auto& j : m_Particles[i].Neighbors)
+	for (auto& j : m_Neighbors[i])
 	{
 		float factor = (m_Particles[j].Type == SOLID) ? (m_Particles[j].BoundaryPsi / 2.0f) : m_Particles[j].Mass;
 		idx_t z = (m_Particles[j].Type == SOLID) ? i : j;
@@ -456,4 +461,5 @@ inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D>* init)
 	std::cout << "Initializing" << '\n';
 	init->Init(m_Particles, m_Params.SmoothingLength);
 	std::cout << "Particles: " << m_Particles.size() << '\n';
+	m_Neighbors.resize(m_Particles.size());
 }

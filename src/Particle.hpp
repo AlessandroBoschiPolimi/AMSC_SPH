@@ -28,7 +28,6 @@ struct Particle
 	float Mass;
 	float Density;
 	float Pressure;
-	std::vector<idx_t> Neighbors;
 	ParticleType Type;
 	float BoundaryPsi;
 };

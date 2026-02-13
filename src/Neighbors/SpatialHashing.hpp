@@ -1,18 +1,20 @@
 #pragma once
 #include "NeighborFinder.hpp"
-template <size_t T>
-struct data_impl;
+
+
+template <size_t D>
+struct spatial_hashing_data_impl;
 template <>
-struct data_impl<2> {
-	static constexpr coord<int, 2> value[3 * 3] = {
+struct spatial_hashing_data_impl<2> {
+	inline static constexpr coord<int, 2> value[3 * 3] = {
 		{ -1, -1 }, { -1,  0 }, { -1, +1 },
 		{  0, -1 }, {  0,  0 }, {  0, +1 },
 		{ +1, -1 }, { +1,  0 }, { +1, +1 }
 	};
 };
 template <>
-struct data_impl<3> {
-	static constexpr coord<int, 3> value[3 * 3 * 3] = {
+struct spatial_hashing_data_impl<3> {
+	inline static constexpr coord<int, 3> value[3 * 3 * 3] = {
 		{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
 		{-1, 0,-1}, {-1, 0,0}, {-1, 0,1},
 		{-1, 1,-1}, {-1, 1,0}, {-1, 1,1},
@@ -38,10 +40,8 @@ public:
 	using     grid_t = hmap<cell_pos_t, cell_t, CoordIntHash<D>>;
 
 
-
-
 public:
-	virtual ~SpatialHashing() = default;
+	virtual ~SpatialHashing() override = default;
 
 	void Find(idx_t i, std::vector<idx_t>& out) override;
 
@@ -55,7 +55,7 @@ private:
 	grid_t m_Grid;
 	SPHSimulation<D>* m_Sim = nullptr;
 
-	static constexpr auto& NeighborOffsets = data_impl<D>::value;
+	static constexpr auto& NeighborOffsets = spatial_hashing_data_impl<D>::value;
 };
 
 
@@ -63,30 +63,34 @@ private:
 template <size_t D>
 inline void SpatialHashing<D>::InitializeFrame(SPHSimulation<D>* sim)
 {
-	m_Sim = sim;
-
-	const auto& particles = m_Sim->GetParticles();
-	float h = m_Sim->GetSmoothingLength();
+	const auto& particles = sim->GetParticles();
+	float h = sim->GetSmoothingLength();
+	
 	#pragma omp master
 	{
+		m_Sim = sim;
 		m_Grid.clear();
 		m_Grid.reserve(particles.size());
 	}
-	grid_t m_Grid_local;
+	#pragma omp barrier
+
+	grid_t local_grid;
+	local_grid.clear();
+	local_grid.reserve(particles.size() / omp_get_num_threads());
+
 	#pragma omp for
-	for (size_t i = 0; i < particles.size(); i++) 
+	for (int i = 0; i < particles.size(); i++) 
 	{
 		cell_pos_t c = GetCellPosition(particles[i].Position, h);
-		m_Grid_local[c].push_back(i);
+		local_grid[c].push_back(i);
 	}
-    #pragma omp critical
-    {
-        for (auto& [cell, vec] : m_Grid_local)
-        {
-		m_Grid[cell].insert(m_Grid[cell].end(), vec.begin(), vec.end());
-        }
-    }
-    #pragma omp barrier
+
+	#pragma omp critical
+	{
+		for (auto& [cell, vec] : local_grid)
+			m_Grid[cell].insert(m_Grid[cell].end(), vec.begin(), vec.end());
+	}
+	#pragma omp barrier
 }
 
 

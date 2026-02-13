@@ -7,15 +7,15 @@
 
 ## Build
 
-	cmake -S . --preset <windows | linux>-<debug | release>
+	cmake -S . --preset <windows | linux>-<debug | release | dist>
 
-	cd build/<debug | release>
+	cd build/<debug | release | dist>
 	make -j
 
 	./AMSC_SPH [options]
 
 ### options
 - `--omp-threads <num>`: 
-	using the number of physical cores is suggested,
+	using the number of physical cores might yield a faster execution,
 	by default OpenMP uses the number of logical / SMT / Hyper-Threading cores,
-	which is worse because SPH is memory-bandwidth bound, not compute-bound
+	which is worse because SPH can be memory-bandwidth bound, not compute-bound

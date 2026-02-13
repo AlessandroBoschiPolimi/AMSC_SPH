@@ -4,6 +4,7 @@ project(AMSC_SPH LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
 # --------------------------------------------------
 # Source files
 # --------------------------------------------------
@@ -105,11 +106,20 @@ elseif (WIN32)
 		opengl32
 	)
 else ()
-    find_package(OpenGL REQUIRED)
-    find_package(X11 REQUIRED)
+	find_package(OpenGL REQUIRED)
+	find_package(X11 REQUIRED)
 
-    target_link_libraries(${PROJECT_NAME}
-        OpenGL::GL
-        X11::X11
-    )
+	target_link_libraries(${PROJECT_NAME}
+		OpenGL::GL
+		X11::X11
+	)
 endif()
+
+
+target_compile_definitions(AMSC_SPH PRIVATE
+	$<$<CONFIG:Debug>:MY_DEBUG>
+	$<$<CONFIG:Release>:MY_RELEASE>
+	$<$<CONFIG:Release>:MY_NDEBUG>
+	$<$<CONFIG:RelWithDebInfo>:MY_DIST>
+	$<$<CONFIG:RelWithDebInfo>:MY_DEBUG>
+)

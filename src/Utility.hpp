@@ -147,10 +147,12 @@ struct coord;
 
 template <typename T>
 struct coord<T, 2> {
+	using type = T;
 	T x, y;
 };
 template <typename T>
 struct coord<T, 3> {
+	using type = T;
 	T x, y, z;
 };
 
@@ -210,19 +212,26 @@ inline bool operator==(const coord<T, 3>& a, const coord<T, 3>& b) {
 }
 
 template <typename T, typename R = T>
-inline R Dot(const coord<T, 2>& a, const coord<T, 2>& b)
-{
+inline R Dot(const coord<T, 2>& a, const coord<T, 2>& b) {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y);
 }
 template <typename T, typename R = T>
-inline R Dot(const coord<T, 3>& a, const coord<T, 3>& b)
-{
+inline R Dot(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y) + to<R>(a.z) * to<R>(b.z);
 }
 template <typename T, size_t D, typename R = T>
-inline R Norm(const coord<T, D>& a)
-{
+inline R Norm(const coord<T, D>& a) {
 	return std::sqrt(Dot(a, a));
+}
+
+
+template <typename T, typename R>
+inline constexpr T to(const coord<R, 2>& c) {
+	return { to<typename T::type>(c.x), to<typename T::type>(c.y) };
+}
+template <typename T, typename R>
+inline constexpr T to(const coord<R, 3>& c) {
+	return { to<typename T::type>(c.x), to<typename T::type>(c.y), to<typename T::type>(c.z) };
 }
 
 
