@@ -1,9 +1,12 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <cmath>
 #include <omp.h>
 #include "Observer.hpp"
 #include "Kernel.hpp"
+#include "Objects/Sink.hpp"
+#include "Objects/Source.hpp"
 
 #include "Command.hpp"
 #include "Initializers/SimInitializer.hpp"
@@ -24,12 +27,12 @@ public:
 	{
 		float RestDensity = 1000.0f;
 		float Stiffness = 1e2f;
-		float Viscosity = 1e-4f;
+		float Viscosity = 1e-6f;
 		float ViscosityRigid = 5e-3f;
-		float TimeStep = 0.0006f;
+		float TimeStep = 0.0003f;
 		float SmoothingLength = 0.007f;
 		float PressureTol = 1e-2f;
-		float FinalTime = 10.0;
+		float FinalTime = 100.0;
 	};
 
 	struct Profiling
@@ -80,7 +83,7 @@ private:
 	std::vector<Observer<D>*> m_Observers;
 	std::vector<Particle<D>> m_Particles;
 	std::vector<std::vector<idx_t>> m_Neighbors;
-
+	std::vector<std::unique_ptr<Object<D>>> m_Objects;
 
 	size_t m_Frame = 0;
 	float m_Time = 0.0f;
@@ -165,6 +168,12 @@ inline void SPHSimulation<D>::Step()
 	#pragma omp single
 	{
 		NotifyStartFrame();
+		for (auto &obj: m_Objects)
+		{
+			obj->Activate();
+			m_Neighbors.clear();
+			m_Neighbors.resize(m_Particles.size());
+		}
 	}
 
 	{
@@ -295,8 +304,16 @@ inline void SPHSimulation<D>::IterativePressure()
 		if (m_Particles[i].Type == SOLID)
 			continue;
 		ComputeAccelerationPressure(i);
-		UpdateVelocityIteration(i);
-		UpdatePositionIteration(i);
+	}
+	#pragma omp single
+	{
+		for (int i = 0; i < m_Particles.size(); i++)
+		{
+			if (m_Particles[i].Type == SOLID)
+				continue;
+			UpdatePositionIteration(i);
+			UpdateVelocityIteration(i);
+		}
 	}
 }
 
@@ -420,6 +437,8 @@ inline void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
 		m_Params.TimeStep *
 		m_Params.TimeStep *
 		m_Particles[i].A_press;
+	for (auto &obj: m_Objects)
+		obj->Activate(i);
 }
 template <size_t D>
 inline void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
@@ -459,7 +478,6 @@ template<size_t D>
 inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D>* init)
 {
 	std::cout << "Initializing" << '\n';
-	init->Init(m_Particles, m_Params.SmoothingLength);
+	init->Init(m_Particles, m_Params.SmoothingLength, m_Objects);
 	std::cout << "Particles: " << m_Particles.size() << '\n';
-	m_Neighbors.resize(m_Particles.size());
 }
