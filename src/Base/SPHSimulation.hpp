@@ -1,0 +1,127 @@
+#pragma once
+#include <vector>
+#include <cmath>
+#include <omp.h>
+#include "Observer.hpp"
+#include "Kernel.hpp"
+
+#include "Command.hpp"
+#include "Initializers/SimInitializer.hpp"
+#include "Neighbors/NeighborFinder.hpp"
+
+
+namespace base
+{
+
+template <size_t D>
+class SPHSimulation
+{
+public:
+	static constexpr size_t size = D;
+	using      idx_t = Particle<D>::idx_t;
+
+	struct Params
+	{
+		float RestDensity = 1000.0f;
+		float Stiffness = 1e2f;
+		float Viscosity = 1e-4f;
+		float ViscosityRigid = 5e-3f;
+		float TimeStep = 0.0006f;
+		float SmoothingLength = 0.007f;
+		float PressureTol = 1e-2f;
+		float FinalTime = 10.0;
+	};
+
+	struct Profiling
+	{
+		stdc::nanoseconds Neighbors = 0ns, Initialize = 0ns, IterativePressure = 0ns;
+	};
+
+	
+
+public: // Simulation interface
+	SPHSimulation();
+	virtual ~SPHSimulation() {
+		for (auto* o : m_Observers)
+			o->Attach(nullptr);
+	}
+
+	virtual void InitializeFluid(const SimInitializer<D>* init) = 0;
+	virtual void Start() = 0;
+
+
+protected: // Simulation functions
+	/*void BuildYWall(float x, float begin, float end, float delta);
+	void BuildXWall(float y, float begin, float end, float delta);*/
+
+	virtual void Step() = 0;
+
+
+protected:
+	Params m_Params;
+
+	Profiling m_Profiling;
+	size_t m_Frame = 0;
+	float m_Time = 0.0f;
+	
+	Command<D> m_Command;
+
+	std::vector<Observer<D>*> m_Observers;
+
+
+public: // Generic interface
+	void AddObserver(Observer<D>* obs) {
+		obs->Attach(this);
+		m_Observers.push_back(obs);
+	}
+
+	void SetParams(const Params& params) { m_Params = params; }
+	void SetRestDensity    (float val) { m_Params.RestDensity     = val; }
+	void SetStiffness      (float val) { m_Params.Stiffness       = val; }
+	void SetViscosity      (float val) { m_Params.Viscosity       = val; }
+	void SetTimeStep       (float val) { m_Params.TimeStep        = val; }
+	void SetSmoothingLength(float val) { m_Params.SmoothingLength = val; }
+	Params GetParams() const { return m_Params; }
+	float GetRestDensity    () const { return m_Params.RestDensity    ; }
+	float GetStiffness      () const { return m_Params.Stiffness      ; }
+	float GetViscosity      () const { return m_Params.Viscosity      ; }
+	float GetTimeStep       () const { return m_Params.TimeStep       ; }
+	float GetSmoothingLength() const { return m_Params.SmoothingLength; }
+
+	virtual const std::vector<Particle<D>>& GetParticles() const = 0;
+	virtual std::vector<Particle<D>>& GetParticles() = 0;
+	virtual const std::vector<std::vector<idx_t>>& GetNeighbors() const = 0;
+	virtual std::vector<std::vector<idx_t>>& GetNeighbors() = 0;
+
+	float  GetTime()  const { return m_Time; }
+	size_t GetFrame() const { return m_Frame; }
+	Profiling GetProfiling() const { return m_Profiling; }
+
+	void ApplyCommand(const Command<D>& cmd) { m_Command = cmd; }
+
+
+protected: // Generic functions
+	void NotifyStartFrame() {
+		for (auto* o : m_Observers)
+			o->OnStartFrame();
+	}
+	void NotifyEndFrame() {
+		for (auto* o : m_Observers)
+			o->OnEndFrame();
+	}
+};
+
+
+/* References:
+ * [1]https://cg.informatik.uni-freiburg.de/publications/2012_SIGGRAPH_rigidFluidCoupling.pdfa
+ * [2]https://cg.informatik.uni-freiburg.de/course_notes/sim_10_sph.pdf
+ */
+
+
+// TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
+template<size_t D>
+inline SPHSimulation<D>::SPHSimulation()
+{ }
+
+
+}

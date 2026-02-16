@@ -2,8 +2,11 @@
 #include <vector>
 #include "Particle.hpp"
 
-template <size_t D>
-class SPHSimulation;
+namespace base
+{
+	template <size_t D>
+	class SPHSimulation;
+}
 
 template <size_t D>
 class Observer {
@@ -19,8 +22,8 @@ public:
 	virtual void OnEndFrame() {}
 
 	/// Executes on the simulation thread
-	virtual void Attach(SPHSimulation<D>* sim) { m_Sim = sim; }
+	virtual void Attach(base::SPHSimulation<D>* sim) { m_Sim = sim; }
 
 protected:
-	SPHSimulation<D>* m_Sim = nullptr;
+	base::SPHSimulation<D>* m_Sim = nullptr;
 };

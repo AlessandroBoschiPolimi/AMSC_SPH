@@ -2,7 +2,7 @@
 #include "Observer.hpp"
 #include "Utility.hpp"
 
-#include "SPHSimulation.hpp"
+#include "Base/SPHSimulation.hpp"
 
 #include "Command.hpp"
 
@@ -32,7 +32,7 @@ public:
 	/// Executes on the simulation thread
 	void OnEndFrame() override;
 	/// Executes on the simulation thread
-	void Attach(SPHSimulation<2>* sim) override;
+	void Attach(base::SPHSimulation<2>* sim) override;
 
 private:
 	/// Executes on the UI thread
@@ -72,8 +72,8 @@ private:
 	Command<2> m_Cmd;
 
 	float m_SimTime = 0;
-	SPHSimulation<2>::Profiling m_SimProfiling;
-	SPHSimulation<2>::Params m_SimParams;
+	base::SPHSimulation<2>::Profiling m_SimProfiling;
+	base::SPHSimulation<2>::Params m_SimParams;
 
 	enum ColoringParam
 	{

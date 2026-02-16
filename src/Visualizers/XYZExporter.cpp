@@ -1,5 +1,5 @@
 #include "XYZExporter.hpp"
-#include "SPHSimulation.hpp"
+#include "Base/SPHSimulation.hpp"
 
 
 void writeXYZ(const int frame, const std::vector<Particle<3>>& particles);

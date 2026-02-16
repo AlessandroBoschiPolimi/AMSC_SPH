@@ -1,6 +1,8 @@
 #pragma once
 #include "NeighborFinder.hpp"
 
+namespace openmp
+{
 
 template <size_t D>
 struct spatial_hashing_data_impl;
@@ -139,4 +141,6 @@ inline SpatialHashing<3>::cell_pos_t SpatialHashing<3>::GetCellPosition(const ve
 		to<int>(std::floor(p.y / h)),
 		to<int>(std::floor(p.z / h))
 	};
+}
+
 }

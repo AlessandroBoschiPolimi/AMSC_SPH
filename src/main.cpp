@@ -1,12 +1,16 @@
 
 #include "Utility.hpp"
-#include "SPHSimulation.hpp"
+#include "OpenMP/SPHSimulation.hpp"
+#include "Serial/SPHSimulation.hpp"
 
 #include "Visualizers/XYZExporter.hpp"
 #include "Visualizers/ImGuiViewer.hpp"
 
-#include "Neighbors/SpatialHashing.hpp"
-#include "Neighbors/MortonSorting.hpp"
+#include "OpenMP/Neighbors/SpatialHashing.hpp"
+#include "OpenMP/Neighbors/MortonSorting.hpp"
+
+#include "Serial/Neighbors/SpatialHashing.hpp"
+#include "Serial/Neighbors/MortonSorting.hpp"
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
@@ -27,16 +31,14 @@ int main(int argc, char** argv)
 	
 	std::cout << "OpenMP Max Threads: " << omp_get_max_threads() << '\n';
 
-	
-	//SpatialHashing<SIZE> nf;
 #if SIZE == 2
 	// TODO: define first the initializer, and query the domain min and max from it
-	MortonSorting<SIZE> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+	openmp::MortonSorting<SIZE> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
 #else
-	MortonSorting<SIZE> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
+	openmp::MortonSorting<SIZE> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
 #endif
 
-	SPHSimulation<SIZE> sph(&nf);
+	openmp::SPHSimulation<SIZE> sph(&nf);
 
 
 	//std::cout << fs::current_path() << '\n';

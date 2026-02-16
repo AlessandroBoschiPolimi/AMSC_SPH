@@ -1,5 +1,4 @@
 #include "ImGuiViewer.hpp"
-#include "SPHSimulation.hpp"
 
 #include <format>
 
@@ -36,7 +35,7 @@ static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos,
 static Particle<2>::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 
 
-void ImGuiViewer::Attach(SPHSimulation<2>* sim)
+void ImGuiViewer::Attach(base::SPHSimulation<2>* sim)
 {
 	Observer::Attach(sim);
 

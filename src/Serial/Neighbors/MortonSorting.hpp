@@ -7,6 +7,9 @@
 #include <numeric>
 
 
+namespace serial
+{
+
 template <size_t D>
 struct morton_sorting_data_impl;
 template <>
@@ -52,7 +55,6 @@ public:
 	void Find(idx_t i, std::vector<idx_t>& out) override;
 
 	void InitializeFrame(SPHSimulation<D>* sim) override;
-	void InitializeFrameSerial(SPHSimulation<D>* sim);
 
 	static cell_pos_t GetCellPosition(const vec_t& p, const float h);
 	static u64 ExpandBits(u32 v);
@@ -83,7 +85,7 @@ private:
 
 
 template <size_t D>
-inline void MortonSorting<D>::InitializeFrameSerial(SPHSimulation<D>* sim)
+inline void MortonSorting<D>::InitializeFrame(SPHSimulation<D>* sim)
 {
 	m_Sim = sim;
 
@@ -166,130 +168,6 @@ inline void MortonSorting<D>::InitializeFrameSerial(SPHSimulation<D>* sim)
 	}
 }
 
-template <size_t D>
-inline void MortonSorting<D>::InitializeFrame(SPHSimulation<D>* sim)
-{
-	auto& particles = sim->GetParticles();
-	float h = sim->GetSmoothingLength();
-	size_t size = particles.size();
-
-	static std::vector<u64> morton;
-	
-	#pragma omp single
-	{
-		m_Sim = sim;
-		m_MinGrid = GetCellPosition(m_DomainMin, h);
-		m_MaxGrid = GetCellPosition(m_DomainMax, h);
-		morton.resize(size);
-	}
-
-	
-	// Get each particle Morton code
-	#pragma omp for
-	for (i64 i = 0; i < size; ++i)
-	{
-		cell_pos_t cell = GetCellPosition(particles[i].Position, h);
-		if (OutsideDomain(cell))
-			continue;
-
-		morton[i] = MortonCode(to<cell_upos_t>(cell - m_MinGrid));
-	}
-
-
-	// Sort by Morton code
-	{
-		static std::vector<size_t> indices;
-		#pragma omp single
-		{
-			indices.resize(size);
-			std::iota(indices.begin(), indices.end(), 0);
-
-			std::sort(indices.begin(), indices.end(),
-				[&](size_t a, size_t b)
-				{
-					return morton[a] < morton[b];
-				});
-		}
-
-
-		{
-			static std::vector<Particle<D>> tmp;
-			#pragma omp single
-			{ tmp.resize(size); }
-
-			#pragma omp for
-			for (i64 i = 0; i < indices.size(); ++i)
-				tmp[i] = particles[indices[i]];
-
-			#pragma omp single
-			{
-				particles = std::move(tmp);
-				tmp.clear();
-			}
-		}
-
-		{
-			static std::vector<u64> tmp;
-			#pragma omp single
-			{ tmp.resize(size); }
-
-			#pragma omp for
-			for (i64 i = 0; i < indices.size(); ++i)
-				tmp[i] = morton[indices[i]];
-			
-			#pragma omp single
-			{
-				morton = std::move(tmp);
-				tmp.clear();
-			}
-		}
-
-		#pragma omp single
-		{ indices.clear(); }
-	}
-	
-
-	// Build cell ranges
-	#pragma omp single
-	{
-		m_UniqueCells.clear();
-		m_CellStart.clear();
-		m_CellEnd.clear();
-
-		for (size_t i = 0; i < size; true) // TODO: parallelize?
-		{
-			u64 code = morton[i];
-			size_t start = i;
-
-			while (i < size && morton[i] == code)
-				++i;
-
-			size_t end = i;
-
-			m_UniqueCells.push_back(code);
-			m_CellStart.push_back(start);
-			m_CellEnd.push_back(end);
-		}
-
-		m_MinCode = morton.front();
-		m_MaxCode = morton.back();
-		size_t tableSize = to<size_t>(m_MaxCode - m_MinCode + 1);
-
-		// dense table: maps Morton code -> index in m_UniqueCells
-		m_MortonLookup.clear();
-		m_MortonLookup.resize(tableSize, -1);
-	}
-
-	#pragma omp for
-	for (i64 idx = 0; idx < m_UniqueCells.size(); ++idx) {
-		u64 code = m_UniqueCells[idx];
-		m_MortonLookup[code - m_MinCode] = to<int>(idx);
-	}
-
-	#pragma omp single
-	{ morton.clear(); }
-}
-
 template <>
 inline bool MortonSorting<2>::OutsideDomain(const cell_pos_t& pos)
 {
@@ -323,7 +201,10 @@ inline void MortonSorting<D>::Find(idx_t i, std::vector<idx_t>& out)
 
 		u64 neighborCode = MortonCode(to<cell_upos_t>(neighbor - m_MinGrid));
 
-		/*auto it = std::lower_bound(m_UniqueCells.begin(), m_UniqueCells.end(), neighborCode);
+		// slower but safer when particles get out of bounds
+		// with dense lookup map we just ignore oob particles (shouldn't we exterminate them anyway?)
+		/*
+		auto it = std::lower_bound(m_UniqueCells.begin(), m_UniqueCells.end(), neighborCode);
 		if (it != m_UniqueCells.end() && *it == neighborCode)
 		{
 			size_t idx = std::distance(m_UniqueCells.begin(), it);
@@ -336,7 +217,8 @@ inline void MortonSorting<D>::Find(idx_t i, std::vector<idx_t>& out)
 				if (Dot(r, r) < h2)
 					out.push_back(j);
 			}
-		}*/
+		}
+		*/
 
 		if (neighborCode < m_MinCode || neighborCode > m_MaxCode)
 			continue; // outside table
@@ -405,4 +287,7 @@ template <>
 inline u64 MortonSorting<3>::MortonCode(const cell_upos_t& pos)
 {
 	return ExpandBits(pos.x) | (ExpandBits(pos.y) << 1) | (ExpandBits(pos.z) << 2);
+}
+
+
 }
