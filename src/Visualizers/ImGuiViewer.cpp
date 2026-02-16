@@ -45,23 +45,27 @@ void ImGuiViewer::Attach(SPHSimulation<2>* sim)
 }
 void ImGuiViewer::OnEndFrame()
 {
+	if (m_Sim == nullptr)
+		return;
+
 	m_SimTimeCounter += stdclock::now() - m_SimFrameStart;
 	m_SimFramesCounter++;
 	if (m_SimTimeCounter > 500ms)
 	{
 		m_SimFPS = to<float>(m_SimFramesCounter) * 1'000'000'000.0 / m_SimTimeCounter.count();
+		m_SimTrueFPS = to<float>(m_SimFramesCounter) * 1'000'000'000.0 / m_SimTrueTimeCounter.count();
 		m_SimFramesCounter = 0;
 		m_SimTimeCounter = 0ns;
+		m_SimTrueTimeCounter = 0ns;
 	}
 
 	std::lock_guard<std::mutex> lock(m_Mutex);
-	if (m_Sim == nullptr)
-		return;
 
 	if (m_Changed)
 	{
 		m_Sim->SetParams(m_SimParams);
 		m_Sim->ApplyCommand(m_Cmd);
+		m_Changed = false;
 	}
 
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
@@ -79,7 +83,9 @@ void ImGuiViewer::OnStartFrame()
 	m_SimTime = m_Sim->GetTime();
 	m_SimProfiling = m_Sim->GetProfiling();
 
-	m_SimFrameStart = stdclock::now();
+	auto now = stdclock::now();
+	m_SimTrueTimeCounter += now - m_SimFrameStart;
+	m_SimFrameStart = now;
 }
 
 
@@ -104,7 +110,7 @@ void ImGuiViewer::DrawStatsWindow()
 	ImGui::Separator();
 	{
 		ImGui::Text("Particles: %d", m_Particles.size());
-		ImGui::Text("UI / SPH FPS: %.1f %.1f", ImGui::GetIO().Framerate, m_SimFPS);
+		ImGui::Text("UI / SPH (True) FPS: %.1f %.1f (%.1f)", ImGui::GetIO().Framerate, m_SimFPS, m_SimTrueFPS);
 
 		{
 			float progress = 0.0f;
