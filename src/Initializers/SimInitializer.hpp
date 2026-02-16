@@ -1,4 +1,9 @@
 #pragma once
+#include <memory>
+
+#include "Objects/Object.hpp"
+#include "Objects/Sink.hpp"
+#include "Objects/Source.hpp"
 #include "Particle.hpp"
 
 template <size_t D>
@@ -11,14 +16,14 @@ public:
 	SimInitializer() = default;
 	virtual ~SimInitializer() = default;
 
-	virtual void Init(std::vector<Particle<2>>& out, float h) const = 0;
+	virtual void Init(std::vector<Particle<2>>& out, float h, std::vector<std::unique_ptr<Object<2>>>& obj) const = 0;
 
 	void BuildWallAlongX(std::vector<Particle<2>>& out, float y, float minx, float maxx, float delta) const;
 	void BuildWallAlongY(std::vector<Particle<2>>& out, float x, float miny, float maxy, float delta) const;
 	void BuildBox(std::vector<Particle<2>>& out, coord<float, 2> left_bottom_corner, float xsize, float ysize, float delta) const;
 	void BuildCircle(std::vector<Particle<2>>& out, coord<float, 2> centre, float radius, float delta) const;
-private:
-	float maxx, maxy;
+	void AddSink(std::vector<std::unique_ptr<Object<2>>>& obj, const coord<float, 2> A, const coord<float, 2> B, std::vector<Particle<2>>& out, const bool is_right) const;
+	void AddSource(std::vector<std::unique_ptr<Object<2>>>& obj, const coord<float, 2> A, const coord<float, 2> B, std::vector<Particle<2>>& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const;
 };
 
 template <>
@@ -28,7 +33,7 @@ public:
 	SimInitializer() = default;
 	virtual ~SimInitializer() = default;
 
-	virtual void Init(std::vector<Particle<3>>& out, float h) const = 0;
+	virtual void Init(std::vector<Particle<3>>& out, float h, std::vector<std::unique_ptr<Object<3>>>& obj) const = 0;
 
 	void BuildWallAlongXZ(std::vector<Particle<3>>& out, float y, float minx, float maxx, float minz, float maxz, float delta) const;
 	void BuildWallAlongYZ(std::vector<Particle<3>>& out, float x, float miny, float maxy, float minz, float maxz, float delta) const;
@@ -112,6 +117,19 @@ inline void SimInitializer<2>::BuildCircle(std::vector<Particle<2>>& out, coord<
 		p.Velocity = Particle<2>::vec_t{ 0.0f, 0.0f };
 		out.push_back(p);
 	}
+}
+
+inline void SimInitializer<2>::AddSink(std::vector<std::unique_ptr<Object<2>>>& obj, const coord<float, 2> A, const coord<float, 2> B, std::vector<Particle<2>>& out, const bool is_right) const
+{
+	Sink<2> o(A, B, out, is_right);
+	obj.push_back(std::make_unique<Sink<2>>(o));
+}
+
+inline void SimInitializer<2>::AddSource(std::vector<std::unique_ptr<Object<2>>>& obj, const coord<float, 2> A, const coord<float, 2> B, std::vector<Particle<2>>& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const
+{
+	Source<2> o(A, B, out, is_right);
+	o.SetParams(v, parts, fp_count, mass);
+	obj.push_back(std::make_unique<Source<2>>(o));
 }
 
 

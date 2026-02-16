@@ -1,11 +1,4 @@
 #pragma once
-#include <vector>
-#include <cmath>
-#include <omp.h>
-#include "Observer.hpp"
-#include "Kernel.hpp"
-
-#include "Command.hpp"
 #include "Neighbors/NeighborFinder.hpp"
 #include "Base/SPHSimulation.hpp"
 
@@ -17,8 +10,8 @@ template <size_t D>
 class SPHSimulation : public base::SPHSimulation<D>
 {
 public:
-	using      idx_t = Particle<D>::idx_t;
-	using      vec_t = Particle<D>::vec_t;
+	using idx_t = Particle<D>::idx_t;
+	using vec_t = Particle<D>::vec_t;
 
 	friend class NeighborFinder<D>;
 
@@ -93,6 +86,11 @@ template <size_t D>
 inline void SPHSimulation<D>::Step()
 {
 	this->NotifyStartFrame();
+	for (auto& obj : this->m_Objects)
+		obj->Activate();
+
+	m_Neighbors.clear();
+	m_Neighbors.resize(m_Particles.size());
 
 	{
 		stdc::time_point<stdclock> start;
@@ -198,8 +196,13 @@ inline void SPHSimulation<D>::IterativePressure()
 		if (m_Particles[i].Type == SOLID)
 			continue;
 		ComputeAccelerationPressure(i);
-		UpdateVelocityIteration(i);
+	}
+	for (int i = 0; i < m_Particles.size(); i++)
+	{
+		if (m_Particles[i].Type == SOLID)
+			continue;
 		UpdatePositionIteration(i);
+		UpdateVelocityIteration(i);
 	}
 }
 
@@ -324,6 +327,9 @@ inline void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
 		this->m_Params.TimeStep *
 		this->m_Params.TimeStep *
 		m_Particles[i].A_press;
+
+	for (auto &obj: this->m_Objects)
+		obj->Activate(i);
 }
 template <size_t D>
 inline void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
@@ -359,9 +365,8 @@ template<size_t D>
 inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D>* init)
 {
 	std::cout << "Initializing" << '\n';
-	init->Init(m_Particles, this->m_Params.SmoothingLength);
+	init->Init(m_Particles, this->m_Params.SmoothingLength, this->m_Objects);
 	std::cout << "Particles: " << m_Particles.size() << '\n';
-	m_Neighbors.resize(m_Particles.size());
 }
 
 }

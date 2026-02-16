@@ -8,10 +8,10 @@ template <>
 class BoxInitializer<2> : public SimInitializer<2>
 {
 public:
-	void Init(std::vector<Particle<2>>& out, float h) const override;
+	void Init(std::vector<Particle<2>>& out, float h, std::vector<std::unique_ptr<Object<2>>>& obj) const override;
 };
 
-inline void BoxInitializer<2>::Init(std::vector<Particle<2>>& out, float h) const
+inline void BoxInitializer<2>::Init(std::vector<Particle<2>>& out, float h, std::vector<std::unique_ptr<Object<2>>>& obj) const
 {
 	using vec_t = Particle<2>::vec_t;
 

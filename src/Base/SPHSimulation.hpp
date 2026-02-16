@@ -1,13 +1,18 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <cmath>
 #include <omp.h>
+
 #include "Observer.hpp"
+#include "Command.hpp"
 #include "Kernel.hpp"
 
-#include "Command.hpp"
 #include "Initializers/SimInitializer.hpp"
 #include "Neighbors/NeighborFinder.hpp"
+
+#include "Objects/Sink.hpp"
+#include "Objects/Source.hpp"
 
 
 namespace base
@@ -18,18 +23,18 @@ class SPHSimulation
 {
 public:
 	static constexpr size_t size = D;
-	using      idx_t = Particle<D>::idx_t;
+	using idx_t = Particle<D>::idx_t;
 
 	struct Params
 	{
 		float RestDensity = 1000.0f;
 		float Stiffness = 1e2f;
-		float Viscosity = 1e-4f;
+		float Viscosity = 1e-6f;
 		float ViscosityRigid = 5e-3f;
-		float TimeStep = 0.0006f;
+		float TimeStep = 0.0003f;
 		float SmoothingLength = 0.007f;
 		float PressureTol = 1e-2f;
-		float FinalTime = 10.0;
+		float FinalTime = 100.0;
 	};
 
 	struct Profiling
@@ -65,6 +70,7 @@ protected:
 	float m_Time = 0.0f;
 	
 	Command<D> m_Command;
+	std::vector<std::unique_ptr<Object<D>>> m_Objects;
 
 	std::vector<Observer<D>*> m_Observers;
 

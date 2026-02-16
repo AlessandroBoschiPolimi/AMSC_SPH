@@ -8,10 +8,10 @@ template <>
 class TrayInitializer<3> : public SimInitializer<3>
 {
 public:
-	void Init(std::vector<Particle<3>>& out, float h) const override;
+	void Init(std::vector<Particle<3>>& out, float h, std::vector<std::unique_ptr<Object<3>>>& obj) const override;
 };
 
-inline void TrayInitializer<3>::Init(std::vector<Particle<3>>& out, float h) const
+inline void TrayInitializer<3>::Init(std::vector<Particle<3>>& out, float h, std::vector<std::unique_ptr<Object<3>>>& obj) const
 {
 	using vec_t = Particle<3>::vec_t;
 

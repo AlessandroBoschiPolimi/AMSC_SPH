@@ -1,13 +1,7 @@
 #pragma once
-#include <vector>
-#include <cmath>
-#include <omp.h>
-#include "Observer.hpp"
-#include "Kernel.hpp"
-
-#include "Command.hpp"
 #include "Neighbors/NeighborFinder.hpp"
 #include "Base/SPHSimulation.hpp"
+
 
 
 namespace openmp
@@ -17,8 +11,8 @@ template <size_t D>
 class SPHSimulation : public base::SPHSimulation<D>
 {
 public:
-	using      idx_t = Particle<D>::idx_t;
-	using      vec_t = Particle<D>::vec_t;
+	using idx_t = Particle<D>::idx_t;
+	using vec_t = Particle<D>::vec_t;
 
 	friend class NeighborFinder<D>;
 
@@ -99,6 +93,15 @@ inline void SPHSimulation<D>::Step()
 	#pragma omp single
 	{
 		this->NotifyStartFrame();
+
+		for (auto& obj : this->m_Objects)
+			obj->Activate();
+
+		if (m_Neighbors.size() != m_Particles.size())
+		{
+			m_Neighbors.clear();
+			m_Neighbors.resize(m_Particles.size());
+		}
 	}
 
 	{
@@ -107,7 +110,7 @@ inline void SPHSimulation<D>::Step()
 		{ start = stdclock::now(); }
 		#pragma omp barrier
 
-		this->m_NeighborFinder->InitializeFrame(this);
+		m_NeighborFinder->InitializeFrame(this);
 		#pragma omp barrier
 		FindAllNeighbors();
 
@@ -155,9 +158,9 @@ template <size_t D>
 inline void SPHSimulation<D>::FindAllNeighbors()
 {
 	#pragma omp for
-	for (int i = 0; i < this->m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		if (this->m_Particles[i].Type == SOLID && this->m_Frame > 0)
+		if (m_Particles[i].Type == SOLID && this->m_Frame > 0)
 			continue;
 		this->m_NeighborFinder->Find(i, this->m_Neighbors[i]);
 	}
@@ -176,27 +179,27 @@ inline void SPHSimulation<D>::Initialize()
 	if (this->m_Frame == 0)
 	{
 		#pragma omp for
-		for (int i = 0; i < this->m_Particles.size(); i++)
+		for (int i = 0; i < m_Particles.size(); i++)
 		{
-			if (this->m_Particles[i].Type == FLUID)
-				this->ComputeDensity(i);
+			if (m_Particles[i].Type == FLUID)
+				ComputeDensity(i);
 			else
-				this->ComputeBoundaryPsi(i);
+				ComputeBoundaryPsi(i);
 		}
 	}
 	#pragma omp for
-	for (int i = 0; i < this->m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		if (this->m_Particles[i].Type == FLUID) {
-			this->ComputeAccelerationViscosity(i);
+		if (m_Particles[i].Type == FLUID) {
+			ComputeAccelerationViscosity(i);
 		}
 	}
 	#pragma omp for
-	for (int i = 0; i < this->m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		if (this->m_Particles[i].Type == FLUID) {
-			this->UpdateVelocityInitial(i);
-			this->UpdatePositionInitial(i);
+		if (m_Particles[i].Type == FLUID) {
+			UpdateVelocityInitial(i);
+			UpdatePositionInitial(i);
 		}
 	}
 }
@@ -210,27 +213,33 @@ inline void SPHSimulation<D>::IterativePressure()
 	 */
 
 	#pragma omp for
-	for (int i = 0; i < this->m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		if (this->m_Particles[i].Type == SOLID)
+		if (m_Particles[i].Type == SOLID)
 			continue;
-		this->ComputeDensity(i);
-		this->ComputePressure(i);
+		ComputeDensity(i);
+		ComputePressure(i);
 	}
 	if (this->m_Command.Type != Command<D>::NONE)
 	{
 		#pragma omp for
-		for (int i = 0; i < this->m_Particles.size(); i++)
-			this->EvaluateCommand(i);
+		for (int i = 0; i < m_Particles.size(); i++)
+			EvaluateCommand(i);
 	}
 	#pragma omp for
-	for (int i = 0; i < this->m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.size(); i++)
 	{
-		if (this->m_Particles[i].Type == SOLID)
+		if (m_Particles[i].Type == SOLID)
 			continue;
-		this->ComputeAccelerationPressure(i);
-		this->UpdateVelocityIteration(i);
-		this->UpdatePositionIteration(i);
+		ComputeAccelerationPressure(i);
+	}
+	#pragma omp for
+	for (int i = 0; i < m_Particles.size(); i++)
+	{
+		if (m_Particles[i].Type == SOLID)
+			continue;
+		UpdatePositionIteration(i);
+		UpdateVelocityIteration(i);
 	}
 }
 
@@ -356,6 +365,9 @@ inline void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
 		this->m_Params.TimeStep *
 		this->m_Params.TimeStep *
 		m_Particles[i].A_press;
+
+	for (auto& obj : this->m_Objects)
+		obj->Activate(i);
 }
 template <size_t D>
 inline void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
@@ -392,9 +404,8 @@ template<size_t D>
 inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D>* init)
 {
 	std::cout << "Initializing" << '\n';
-	init->Init(m_Particles, this->m_Params.SmoothingLength);
+	init->Init(m_Particles, this->m_Params.SmoothingLength, this->m_Objects);
 	std::cout << "Particles: " << m_Particles.size() << '\n';
-	m_Neighbors.resize(m_Particles.size());
 }
 
 
