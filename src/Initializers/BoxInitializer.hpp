@@ -45,4 +45,7 @@ inline void BoxInitializer<2>::Init(std::vector<Particle<2>>& out, float h, std:
 	BuildWallAlongY(out, 1.0, 0.25, 0.8, 0.0025);
 	BuildBox(out, coord<float, 2>{0.6, 0.255}, 0.1, 0.1, 0.003);
 	BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.003);
+
+	//AddSink(obj, { 0.5, 0.2 }, { 0.7, 0.3 }, out, false);
+	//AddSource(obj, { 0.4, 0.6 }, { 0.5, 0.5 }, out, true, 0.5, 10, 100, 0.025);
 }

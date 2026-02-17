@@ -87,7 +87,7 @@ inline void SPHSimulation<D>::Step()
 {
 	this->NotifyStartFrame();
 	for (auto& obj : this->m_Objects)
-		obj->Activate();
+		obj->OnFrameStart();
 
 	m_Neighbors.clear();
 	m_Neighbors.resize(m_Particles.size());

@@ -2,6 +2,8 @@
 #include "Utility.hpp"
 #include "Object.hpp"
 
+// TODO: make their behaviour depend on simulation time, not frame count
+
 template <size_t D>
 class Source;
 
@@ -12,7 +14,7 @@ public:
 	using idx_t = u32;
 	using Object::Object;
 
-	void Activate() override;
+	void OnFrameStart() override;
 	void SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_);
 
 private:
@@ -23,7 +25,7 @@ private:
 	int ii = 0;
 };
 
-inline void Source<2>::Activate()
+inline void Source<2>::OnFrameStart()
 {
 	ii++;
 	if (ii % fp_count != 0)

@@ -19,8 +19,8 @@ public:
 		b = A_.y - a * A_.x;
 	}
 
-	virtual void Activate(const idx_t i){};
-	virtual void Activate(){};
+	virtual void Activate(const idx_t i) {};
+	virtual void OnFrameStart() {};
 	
 protected:
 	const coord<float, 2> A;
@@ -41,7 +41,7 @@ public:
 	Object() = default;
 
 	virtual void Activate(const idx_t i) {};
-	virtual void Activate() {};
+	virtual void OnFrameStart() {};
 
 protected:
 };
