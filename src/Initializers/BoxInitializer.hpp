@@ -1,17 +1,20 @@
 #include "SimInitializer.hpp"
 
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class BoxInitializer;
 
-template <>
-class BoxInitializer<2> : public SimInitializer<2>
+template <ParticleSet<2> Particles>
+class BoxInitializer<2, Particles> : public SimInitializer<2, Particles>
 {
 public:
-	void Init(std::vector<Particle<2>>& out, float h, std::vector<std::unique_ptr<Object<2>>>& obj) const override;
+	using Objects = SimInitializer<2, Particles>::Objects;
+
+	void Init(Particles& out, float h, Objects& obj) const override;
 };
 
-inline void BoxInitializer<2>::Init(std::vector<Particle<2>>& out, float h, std::vector<std::unique_ptr<Object<2>>>& obj) const
+template <ParticleSet<2> Particles>
+inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects& obj) const
 {
 	using vec_t = Particle<2>::vec_t;
 
@@ -31,20 +34,20 @@ inline void BoxInitializer<2>::Init(std::vector<Particle<2>>& out, float h, std:
 			// Arbitrary Mass to match with other constants
 			p.Mass = 0.025f;
 			p.A_grav = G_CONSTANT * vertical_direction;
-			out.push_back(p);
+			out.PushBack(p);
 		}
 	}
 	// Create multiple walls of the box to avoid leaks
 	// TODO: Add walls options to properties
 	for (int i = 0; i < 2; i++)
 	{
-		BuildWallAlongX(out, 0.25 - h  * i, 0, 1.0, 0.0025);
-		BuildWallAlongX(out, 0.8 + h   * i, 0, 1.0, 0.0025);
-		BuildWallAlongY(out, 0 + h   * i, 0.25, 0.8, 0.0025);
+		this->BuildWallAlongX(out, 0.25 - h * i, 0, 1.0, 0.0025);
+		this->BuildWallAlongX(out, 0.8 + h * i, 0, 1.0, 0.0025);
+		this->BuildWallAlongY(out, 0 + h   * i, 0.25, 0.8, 0.0025);
 	}
-	BuildWallAlongY(out, 1.0, 0.25, 0.8, 0.0025);
-	BuildBox(out, coord<float, 2>{0.6, 0.255}, 0.1, 0.1, 0.003);
-	BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.003);
+	this->BuildWallAlongY(out, 1.0, 0.25, 0.8, 0.0025);
+	this->BuildBox(out, coord<float, 2>{0.6, 0.255}, 0.1, 0.1, 0.003);
+	this->BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.003);
 
 	//AddSink(obj, { 0.5, 0.2 }, { 0.7, 0.3 }, out, false);
 	//AddSource(obj, { 0.4, 0.6 }, { 0.5, 0.5 }, out, true, 0.5, 10, 100, 0.025);

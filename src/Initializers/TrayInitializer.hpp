@@ -1,17 +1,20 @@
 #include "SimInitializer.hpp"
 
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class TrayInitializer;
 
-template <>
-class TrayInitializer<3> : public SimInitializer<3>
+template <ParticleSet<3> Particles>
+class TrayInitializer<3, Particles> : public SimInitializer<3, Particles>
 {
 public:
-	void Init(std::vector<Particle<3>>& out, float h, std::vector<std::unique_ptr<Object<3>>>& obj) const override;
+	using Objects = SimInitializer<3, Particles>::Objects;
+
+	void Init(Particles& out, float h, Objects& obj) const override;
 };
 
-inline void TrayInitializer<3>::Init(std::vector<Particle<3>>& out, float h, std::vector<std::unique_ptr<Object<3>>>& obj) const
+template <ParticleSet<3> Particles>
+inline void TrayInitializer<3, Particles>::Init(Particles& out, float h, Objects& obj) const
 {
 	using vec_t = Particle<3>::vec_t;
 
@@ -35,7 +38,7 @@ inline void TrayInitializer<3>::Init(std::vector<Particle<3>>& out, float h, std
 					// Arbitrary Mass to match with other constants
 					p.Mass = 0.5f;
 					p.A_grav = G_CONSTANT * vertical_direction;
-					out.push_back(p);
+					out.PushBack(p);
 				}
 			}
 		}

@@ -2,39 +2,6 @@
 #include "Base/SPHSimulation.hpp"
 
 
-void writeXYZ(const int frame, const std::vector<Particle<3>>& particles);
-void writeVTU(const int frame, const std::vector<Particle<3>>& particles);
-void writeVTUBinary(const int frame, const std::vector<Particle<3>>& particles);
-
-
-
-void XYZExporter::OnEndFrame() {
-	if (m_Sim == nullptr)
-		return;
-
-	std::cout << "Frame: " << m_Sim->GetFrame() << '\n';
-
-	auto now = stdclock::now();
-	std::cout << "Simulate ";
-	print_time(now - m_SimFrameEnd);
-	std::cout << ' ';
-
-	if (m_Sim->GetFrame() % 10 == 0)
-	{
-		auto writeStart = stdclock::now();
-		writeVTUBinary(m_Sim->GetFrame() / 10, m_Sim->GetParticles());
-		auto writeEnd = stdclock::now();
-		std::cout << "Write ";
-		print_time(writeEnd - writeStart);
-	}
-	std::cout << '\n';
-
-	m_SimFrameEnd = stdclock::now();
-}
-
-
-
-
 void writeXYZ(const int frame, const std::vector<Particle<3>>& particles)
 {
 	std::ofstream out(std::format("output-{}.xyz", frame));

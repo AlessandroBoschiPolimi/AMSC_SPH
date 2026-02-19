@@ -5,10 +5,10 @@
 namespace serial
 {
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class SPHSimulation;
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class NeighborFinder : public base::NeighborFinder<D>
 {
 public:
@@ -16,7 +16,7 @@ public:
 
 	virtual ~NeighborFinder() override = default;
 
-	virtual void InitializeFrame(SPHSimulation<D>* sim) {}
+	virtual void InitializeFrame(SPHSimulation<D, Particles>* sim) {}
 	/// Populates "out" with the neighbors of particle i-th
 	void Find(idx_t i, std::vector<idx_t>& out) = 0;
 

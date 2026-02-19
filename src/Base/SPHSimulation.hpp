@@ -18,7 +18,7 @@
 namespace base
 {
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class SPHSimulation
 {
 public:
@@ -45,19 +45,17 @@ public:
 	
 
 public: // Simulation interface
-	SPHSimulation();
+	SPHSimulation() = default;
 	virtual ~SPHSimulation() {
 		for (auto* o : m_Observers)
 			o->Attach(nullptr);
 	}
 
-	virtual void InitializeFluid(const SimInitializer<D>* init) = 0;
+	virtual void InitializeFluid(const SimInitializer<D, Particles>* init) = 0;
 	virtual void Start() = 0;
 
 
 protected: // Simulation functions
-	/*void BuildYWall(float x, float begin, float end, float delta);
-	void BuildXWall(float y, float begin, float end, float delta);*/
 
 	virtual void Step() = 0;
 
@@ -70,13 +68,13 @@ protected:
 	float m_Time = 0.0f;
 	
 	Command<D> m_Command;
-	std::vector<std::unique_ptr<Object<D>>> m_Objects;
+	std::vector<std::unique_ptr<Object<D, Particles>>> m_Objects;
 
-	std::vector<Observer<D>*> m_Observers;
+	std::vector<Observer<D, Particles>*> m_Observers;
 
 
 public: // Generic interface
-	void AddObserver(Observer<D>* obs) {
+	void AddObserver(Observer<D, Particles>* obs) {
 		obs->Attach(this);
 		m_Observers.push_back(obs);
 	}
@@ -94,8 +92,8 @@ public: // Generic interface
 	float GetTimeStep       () const { return m_Params.TimeStep       ; }
 	float GetSmoothingLength() const { return m_Params.SmoothingLength; }
 
-	virtual const std::vector<Particle<D>>& GetParticles() const = 0;
-	virtual std::vector<Particle<D>>& GetParticles() = 0;
+	virtual const Particles& GetParticles() const = 0;
+	virtual Particles& GetParticles() = 0;
 	virtual const std::vector<std::vector<idx_t>>& GetNeighbors() const = 0;
 	virtual std::vector<std::vector<idx_t>>& GetNeighbors() = 0;
 
@@ -122,12 +120,4 @@ protected: // Generic functions
  * [1]https://cg.informatik.uni-freiburg.de/publications/2012_SIGGRAPH_rigidFluidCoupling.pdfa
  * [2]https://cg.informatik.uni-freiburg.de/course_notes/sim_10_sph.pdf
  */
-
-
-// TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
-template<size_t D>
-inline SPHSimulation<D>::SPHSimulation()
-{ }
-
-
 }

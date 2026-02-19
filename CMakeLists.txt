@@ -1,15 +1,25 @@
 cmake_minimum_required(VERSION 3.16)
-project(AMSC_SPH LANGUAGES C CXX)
+project(AMSC_SPH LANGUAGES C CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_ARCHITECTURES 75)
 
 # --------------------------------------------------
 # Source files
 # --------------------------------------------------
 file(GLOB_RECURSE SRC_FILES
-	src/*.cpp)
+	src/*.cpp
+	src/*.cu
+)
+
+# --------------------------------------------------
+# CUDA
+# --------------------------------------------------
+find_package(CUDAToolkit REQUIRED)
 
 # --------------------------------------------------
 # ImGui sources
@@ -42,6 +52,10 @@ target_include_directories(glad PUBLIC
 # --------------------------------------------------
 add_subdirectory(vendor/glfw)
 
+# --------------------------------------------------
+# OpenMP
+# --------------------------------------------------
+find_package(OpenMP REQUIRED)
 
 # --------------------------------------------------
 # Virtual Terminal
@@ -86,13 +100,9 @@ target_link_libraries(${PROJECT_NAME}
 	glad
 	glfw
 	OpenMP::OpenMP_CXX
+	CUDA::cudart
 	# virtualterminal
 )
-
-# --------------------------------------------------
-# OpenMP
-# --------------------------------------------------
-find_package(OpenMP REQUIRED)
 
 # --------------------------------------------------
 # Platform-specific OpenGL
@@ -116,7 +126,12 @@ else ()
 endif()
 
 
-target_compile_definitions(AMSC_SPH PRIVATE
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
 	$<$<CONFIG:Debug>:MY_DEBUG>
 	$<$<CONFIG:Release>:MY_RELEASE>
 	$<$<CONFIG:Release>:MY_NDEBUG>

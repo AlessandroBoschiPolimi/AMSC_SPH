@@ -7,28 +7,28 @@
 namespace openmp
 {
 
-template <size_t D>
-class SPHSimulation : public base::SPHSimulation<D>
+template <size_t D, ParticleSet<D> Particles>
+class SPHSimulation : public base::SPHSimulation<D, Particles>
 {
 public:
 	using idx_t = Particle<D>::idx_t;
 	using vec_t = Particle<D>::vec_t;
 
-	friend class NeighborFinder<D>;
+	friend class NeighborFinder<D, Particles>;
 
 
-	SPHSimulation(NeighborFinder<D>* nf);
+	SPHSimulation(NeighborFinder<D, Particles>* nf);
 	virtual ~SPHSimulation() override { }
 
 	void Start() override;
 
 
-	const std::vector<Particle<D>>& GetParticles() const override { return m_Particles; }
-	std::vector<Particle<D>>& GetParticles() override { return m_Particles; }
+	const Particles& GetParticles() const override { return m_Particles; }
+	Particles& GetParticles() override { return m_Particles; }
 	const std::vector<std::vector<idx_t>>& GetNeighbors() const override { return m_Neighbors; }
 	std::vector<std::vector<idx_t>>& GetNeighbors() override { return m_Neighbors; }
 
-	void InitializeFluid(const SimInitializer<D>* init) override;
+	void InitializeFluid(const SimInitializer<D, Particles>* init) override;
 
 
 protected:
@@ -55,11 +55,10 @@ protected:
 
 
 private:
-	std::vector<Observer<D>*> m_Observers;
-	std::vector<Particle<D>> m_Particles;
+	Particles m_Particles;
 	std::vector<std::vector<idx_t>> m_Neighbors;
 
-	NeighborFinder<D>* m_NeighborFinder = nullptr;
+	NeighborFinder<D, Particles>* m_NeighborFinder = nullptr;
 
 	Kernel<D> W_Ker;
 };
@@ -71,15 +70,17 @@ private:
  */
 
 
-template<size_t D>
-inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf) 
-	: m_NeighborFinder(nf), W_Ker(this->m_Params.SmoothingLength / 2.0f)
+ // TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
+
+template <size_t D, ParticleSet<D> Particles>
+inline SPHSimulation<D, Particles>::SPHSimulation(NeighborFinder<D, Particles>* nf)
+	: base::SPHSimulation<D, Particles>(), m_NeighborFinder(nf), W_Ker(this->m_Params.SmoothingLength / 2.0f)
 { }
 
 
 
-template <size_t D>
-inline void SPHSimulation<D>::Start()
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::Start()
 {
 	#pragma omp parallel
 	{
@@ -87,8 +88,8 @@ inline void SPHSimulation<D>::Start()
 			Step();
 	}
 }
-template <size_t D>
-inline void SPHSimulation<D>::Step()
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::Step()
 {
 	#pragma omp single
 	{
@@ -97,10 +98,10 @@ inline void SPHSimulation<D>::Step()
 		for (auto& obj : this->m_Objects)
 			obj->OnFrameStart();
 
-		if (m_Neighbors.size() != m_Particles.size())
+		if (m_Neighbors.size() != m_Particles.Size())
 		{
 			m_Neighbors.clear();
-			m_Neighbors.resize(m_Particles.size());
+			m_Neighbors.resize(m_Particles.Size());
 		}
 	}
 
@@ -108,7 +109,7 @@ inline void SPHSimulation<D>::Step()
 		stdc::time_point<stdclock> start;
 		#pragma omp master
 		{ start = stdclock::now(); }
-		#pragma omp barrier
+		#pragma omp barrier // TODO: useless barriers, who cares if the other threads advance.
 
 		m_NeighborFinder->InitializeFrame(this);
 		#pragma omp barrier
@@ -154,20 +155,20 @@ inline void SPHSimulation<D>::Step()
 
 
 
-template <size_t D>
-inline void SPHSimulation<D>::FindAllNeighbors()
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::FindAllNeighbors()
 {
 	#pragma omp for
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.Size(); i++)
 	{
-		if (m_Particles[i].Type == SOLID && this->m_Frame > 0)
+		if (m_Particles.Type(i) == SOLID && this->m_Frame > 0)
 			continue;
-		this->m_NeighborFinder->Find(i, this->m_Neighbors[i]);
+		m_NeighborFinder->Find(i, m_Neighbors[i]);
 	}
 }
 
-template <size_t D>
-inline void SPHSimulation<D>::Initialize()
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::Initialize()
 {
 	/*
 	 * Non-iterative part of the timestep
@@ -179,32 +180,31 @@ inline void SPHSimulation<D>::Initialize()
 	if (this->m_Frame == 0)
 	{
 		#pragma omp for
-		for (int i = 0; i < m_Particles.size(); i++)
+		for (int i = 0; i < m_Particles.Size(); i++)
 		{
-			if (m_Particles[i].Type == FLUID)
+			if (m_Particles.Type(i) == FLUID)
 				ComputeDensity(i);
 			else
 				ComputeBoundaryPsi(i);
 		}
 	}
 	#pragma omp for
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.Size(); i++)
 	{
-		if (m_Particles[i].Type == FLUID) {
+		if (m_Particles.Type(i) == FLUID)
 			ComputeAccelerationViscosity(i);
-		}
 	}
 	#pragma omp for
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.Size(); i++)
 	{
-		if (m_Particles[i].Type == FLUID) {
+		if (m_Particles.Type(i) == FLUID) {
 			UpdateVelocityInitial(i);
 			UpdatePositionInitial(i);
 		}
 	}
 }
-template <size_t D>
-inline void SPHSimulation<D>::IterativePressure()
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::IterativePressure()
 {
 	/*
 	 * Use simple scheme with splitting
@@ -213,9 +213,9 @@ inline void SPHSimulation<D>::IterativePressure()
 	 */
 
 	#pragma omp for
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.Size(); i++)
 	{
-		if (m_Particles[i].Type == SOLID)
+		if (m_Particles.Type(i) == SOLID)
 			continue;
 		ComputeDensity(i);
 		ComputePressure(i);
@@ -223,20 +223,20 @@ inline void SPHSimulation<D>::IterativePressure()
 	if (this->m_Command.Type != Command<D>::NONE)
 	{
 		#pragma omp for
-		for (int i = 0; i < m_Particles.size(); i++)
+		for (int i = 0; i < m_Particles.Size(); i++)
 			EvaluateCommand(i);
 	}
 	#pragma omp for
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.Size(); i++)
 	{
-		if (m_Particles[i].Type == SOLID)
+		if (m_Particles.Type(i) == SOLID)
 			continue;
 		ComputeAccelerationPressure(i);
 	}
 	#pragma omp for
-	for (int i = 0; i < m_Particles.size(); i++)
+	for (int i = 0; i < m_Particles.Size(); i++)
 	{
-		if (m_Particles[i].Type == SOLID)
+		if (m_Particles.Type(i) == SOLID)
 			continue;
 		UpdatePositionIteration(i);
 		UpdateVelocityIteration(i);
@@ -245,167 +245,183 @@ inline void SPHSimulation<D>::IterativePressure()
 
 
 
-template <size_t D>
-inline void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::ComputeBoundaryPsi(idx_t i)
 {
 	/*
 	 * Computes 'mass' of the boundary particles used
-	   to implement collisions
+	 * to implement collisions
 	 */
 	float V = 0;
 	for (auto& j : m_Neighbors[i])
 	{
-		if (m_Particles[j].Type == SOLID)
-			V += W_Ker.GetValue(m_Particles[i], m_Particles[j]);
+		if (m_Particles.Type(j) == SOLID)
+			V += W_Ker.GetValue(m_Particles.Position(i), m_Particles.Position(j));
 	}
-	//Clamp the values in case the volume is too small
-	m_Particles[i].BoundaryPsi = (V > 1.0f) ? this->m_Params.RestDensity / V : 0;
+	// Clamp the values in case the volume is too small
+	m_Particles.SetBoundaryPsi(i, (V > 1.0f) ? this->m_Params.RestDensity / V : 0);
 }
-template <size_t D>
-inline void SPHSimulation<D>::ComputeDensity(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::ComputeDensity(idx_t i)
 {
 	/*
 	 * Simple function to compute density
 	 * Takes initial value of density produced by itself
 	 * For security, clamps the value in the end to avoid disappearing particles
 	 */
-	m_Particles[i].Density = m_Particles[i].Mass * W_Ker.GetValue(m_Particles[i], m_Particles[i]);
-	for (auto& j : m_Neighbors[i]) {
-		float W_ij = W_Ker.GetValue(m_Particles[i], m_Particles[j]);
-		if (m_Particles[j].Type == FLUID)
-		{
-			m_Particles[i].Density += m_Particles[j].Mass * W_ij;
-		}
-		//Boundary handling
-		else
-		{
-			m_Particles[i].Density += m_Particles[j].BoundaryPsi * W_ij;
-		}
+
+	auto pi = m_Particles.Position(i);
+
+	float density = m_Particles.Mass(i) * W_Ker.GetValue(pi, pi);
+	for (auto& j : m_Neighbors[i])
+	{
+		float W_ij = W_Ker.GetValue(pi, m_Particles.Position(j));
+		if (m_Particles.Type(j) == FLUID)
+			density += m_Particles.Mass(j) * W_ij;
+		else // Boundary handling
+			density += m_Particles.BoundaryPsi(j) * W_ij;
 	}
+
+	m_Particles.SetDensity(i, density);
 }
 
-template <size_t D>
-inline void SPHSimulation<D>::ComputePressure(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::ComputePressure(idx_t i)
 {
 	/*
 	 * (Andrew) Tait equation
 	 * Stiffness constant is user defined
 	 */
-	m_Particles[i].Pressure = std::max(this->m_Params.Stiffness *
-		(std::pow(m_Particles[i].Density /
-			(this->m_Params.RestDensity), 7.0f) - 1), 0.0f);
+
+	float pressure = std::max(
+		this->m_Params.Stiffness * (std::pow(m_Particles.Density(i) / (this->m_Params.RestDensity), 7.0f) - 1),
+		0.0f
+	);
+	m_Particles.SetPressure(i, pressure);
 }
 
-template <size_t D>
-inline void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::ComputeAccelerationViscosity(idx_t i)
 {
 	/*
 	 * Computes acceleration dues to viscosity from [1]
 	 * [2] has typos in that formula
 	 */
-	m_Particles[i].A_visc = vec_t{ 0, 0 };
+
+	auto pi = m_Particles.Position(i);
+	auto vi = m_Particles.Velocity(i);
+	auto di = m_Particles.Density(i);
+
+	float sl2 = this->m_Params.SmoothingLength * this->m_Params.SmoothingLength;
+	vec_t acc = vec_t{ 0, 0 };
+
 	for (auto& j : m_Neighbors[i])
 	{
-		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
-		vec_t v_ij = m_Particles[i].Velocity - m_Particles[j].Velocity;
-		vec_t x_ij = m_Particles[i].Position - m_Particles[j].Position;
+		vec_t DW_ij = W_Ker.GetGradient(pi, m_Particles.Position(j));
+		vec_t v_ij = vi - m_Particles.Velocity(j);
+		vec_t x_ij = pi - m_Particles.Position(j);
 		float prod = Dot(x_ij, v_ij);
 		float numerator = ((prod > 0) ? prod : 0);
-		if (m_Particles[j].Type == FLUID)
+
+		if (m_Particles.Type(j) == FLUID)
 		{
-			numerator *= m_Particles[j].Mass;
-			float denominator = (m_Particles[i].Density + m_Particles[j].Density) * (Dot(x_ij, x_ij) +
-				0.01 * this->m_Params.SmoothingLength * this->m_Params.SmoothingLength);
-			m_Particles[i].A_visc += (2 * this->m_Params.Viscosity * (numerator / denominator)) * DW_ij;
+			numerator *= m_Particles.Mass(j);
+			float denominator = (di + m_Particles.Density(j)) * (Dot(x_ij, x_ij) + 0.01 * sl2);
+			acc += (2 * this->m_Params.Viscosity * (numerator / denominator)) * DW_ij;
 		}
 		else
 		{
-			float denominator = 2 * m_Particles[i].Density * (Dot(x_ij, x_ij) +
-				0.01 * this->m_Params.SmoothingLength * this->m_Params.SmoothingLength);
-			m_Particles[i].A_visc += (this->m_Params.ViscosityRigid * (numerator / denominator)) *
-				m_Particles[j].BoundaryPsi * DW_ij;
+			float denominator = 2 * di * (Dot(x_ij, x_ij) + 0.01 * sl2);
+			acc += (this->m_Params.ViscosityRigid * (numerator / denominator)) * m_Particles.BoundaryPsi(j) * DW_ij;
 		}
 	}
+
+	m_Particles.SetAccelerationViscosity(i, acc);
 }
 
-template <size_t D>
-inline void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::ComputeAccelerationPressure(idx_t i)
 {
 	/*
 	 * Computes acceleration dues to viscosity from [2]
 	 * Boundary handling according to [2]
 	 */
-	m_Particles[i].A_press = vec_t{ 0, 0 };
+
+	auto pi = m_Particles.Position(i);
+	auto pri = m_Particles.Pressure(i);
+	auto di = m_Particles.Density(i);
+	auto ddi = di * di;
+
+	vec_t acc = vec_t{ 0, 0 };
+
 	for (auto& j : m_Neighbors[i])
 	{
-		float factor = (m_Particles[j].Type == SOLID) ? (m_Particles[j].BoundaryPsi / 2.0f) : m_Particles[j].Mass;
-		idx_t z = (m_Particles[j].Type == SOLID) ? i : j;
-		vec_t DW_ij = W_Ker.GetGradient(m_Particles[i], m_Particles[j]);
-		m_Particles[i].A_press -=
-			(m_Particles[i].Pressure / (m_Particles[i].Density * m_Particles[i].Density) +
-				m_Particles[z].Pressure / (m_Particles[z].Density * m_Particles[z].Density)) *
-			factor *
-			DW_ij;
+		float factor = (m_Particles.Type(j) == SOLID) ? (m_Particles.BoundaryPsi(j) / 2.0f) : m_Particles.Mass(j);
+		idx_t z = (m_Particles.Type(j) == SOLID) ? i : j;
+		vec_t DW_ij = W_Ker.GetGradient(pi, m_Particles.Position(j));
+		auto dz = m_Particles.Density(z);
+
+		acc -= (pri / ddi + m_Particles.Pressure(z) / (dz * dz)) * factor * DW_ij;
 	}
+
+	m_Particles.SetAccelerationPressure(i, acc);
 }
 
-template <size_t D>
-inline void SPHSimulation<D>::UpdatePositionInitial(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::UpdatePositionInitial(idx_t i)
 {
-	//Update position due to viscosity and gravity
-	m_Particles[i].Position +=
-		this->m_Params.TimeStep *
-		m_Particles[i].Velocity;
+	// Update position due to viscosity and gravity
+	auto pi = m_Particles.Position(i);
+	m_Particles.SetPosition(i, pi + this->m_Params.TimeStep * m_Particles.Velocity(i));
 }
-template <size_t D>
-inline void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::UpdatePositionIteration(idx_t i)
 {
-	//Update position due to pressure
-	m_Particles[i].Position +=
-		this->m_Params.TimeStep *
-		this->m_Params.TimeStep *
-		m_Particles[i].A_press;
+	// Update position due to pressure
+	auto pi = m_Particles.Position(i);
+	pi += this->m_Params.TimeStep * this->m_Params.TimeStep *
+		m_Particles.AccelerationPressure(i);
+	m_Particles.SetPosition(i, pi);
 
 	for (auto& obj : this->m_Objects)
 		obj->Activate(i);
 }
-template <size_t D>
-inline void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::UpdateVelocityInitial(idx_t i)
 {
-	//Update velocity due to viscosity and gravity
-	m_Particles[i].Velocity +=
-		this->m_Params.TimeStep *
-		(m_Particles[i].A_grav +
-			m_Particles[i].A_visc);
+	// Update velocity due to viscosity and gravity
+	auto vi = m_Particles.Velocity(i);
+	vi += this->m_Params.TimeStep * (m_Particles.AccelerationGravity(i) + m_Particles.AccelerationViscosity(i));
+	m_Particles.SetVelocity(i, vi);
 }
-template <size_t D>
-inline void SPHSimulation<D>::UpdateVelocityIteration(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::UpdateVelocityIteration(idx_t i)
 {
-	//Update velocity due to pressure
-	m_Particles[i].Velocity +=
-		this->m_Params.TimeStep *
-		m_Particles[i].A_press;
+	// Update velocity due to pressure
+	auto vi = m_Particles.Velocity(i);
+	vi += this->m_Params.TimeStep * m_Particles.AccelerationPressure(i);
+	m_Particles.SetVelocity(i, vi);
 }
 
 
-template <size_t D>
-inline void SPHSimulation<D>::EvaluateCommand(idx_t i)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::EvaluateCommand(idx_t i)
 {
-	float d = Norm(m_Particles[i].Position - this->m_Command.Position);
+	float d = Norm(m_Particles.Position(i) - this->m_Command.Position);
 	if (d < this->m_Command.Radius)
 	{
 		float falloff = 1.0f - d / this->m_Command.Radius;
-		m_Particles[i].Pressure += falloff * this->m_Command.Strength;
+		float pressure = m_Particles.Pressure(i) + falloff * this->m_Command.Strength;
+		m_Particles.SetPressure(i, pressure);
 	}
 }
 
-
-template<size_t D>
-inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D>* init)
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::InitializeFluid(const SimInitializer<D, Particles>* init)
 {
 	std::cout << "Initializing" << '\n';
 	init->Init(m_Particles, this->m_Params.SmoothingLength, this->m_Objects);
-	std::cout << "Particles: " << m_Particles.size() << '\n';
+	std::cout << "Particles: " << m_Particles.Size() << '\n';
 }
 
 

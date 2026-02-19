@@ -3,21 +3,22 @@
 #include <vector>
 
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class Object;
 
-template <>
-class Object<2>
+template <ParticleSet<2> Particles>
+class Object<2, Particles>
 {
 public:
-	using idx_t = Particle<3>::idx_t;
+	using idx_t = Particle<2>::idx_t;
 
-	Object(const coord<float, 2> A_, const coord<float, 2> B_, std::vector<Particle<2>>& out_, const bool is_right_)
+	Object(const coord<float, 2> A_, const coord<float, 2> B_, Particles& out_, const bool is_right_)
 		: out(out_), A(A_), B(B_), is_right(is_right_)
 	{
 		a = (A_.y - B_.y) / (A_.x - B_.x);
 		b = A_.y - a * A_.x;
 	}
+	virtual ~Object() = default;
 
 	virtual void Activate(const idx_t i) {};
 	virtual void OnFrameStart() {};
@@ -28,12 +29,13 @@ protected:
 	float a;
 	float b;
 	const bool is_right;
-	std::vector<Particle<2>>& out;
+	
+	Particles& out;
 };
 
 
-template <>
-class Object<3>
+template <ParticleSet<3> Particles>
+class Object<3, Particles>
 {
 public:
 	using idx_t = Particle<3>::idx_t;
@@ -44,4 +46,5 @@ public:
 	virtual void OnFrameStart() {};
 
 protected:
+	Particles& out;
 };

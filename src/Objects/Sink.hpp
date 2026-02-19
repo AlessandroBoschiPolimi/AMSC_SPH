@@ -1,46 +1,44 @@
 #pragma once
 #include "Object.hpp"
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class Sink;
 
-template <>
-class Sink<2> : public Object<2>
+template <ParticleSet<2> Particles>
+class Sink<2, Particles> : public Object<2, Particles>
 {
 public:
-	using idx_t = u32;
-	using Object::Object;
+	using idx_t = Object<2, Particles>::idx_t;
+	
+	~Sink() override = default;
 
 	void OnFrameStart() override;
 };
-inline void Sink<2>::OnFrameStart()
+
+template <ParticleSet<2> Particles>
+inline void Sink<2, Particles>::OnFrameStart()
 {
-	if (out.empty())
+	if (this->out.Empty())
 		return;
 
-	std::stack<size_t> to_erase;
+	size_t write_end = this->out.Size();
 
-	for (size_t i = 0; i < out.size(); i++)
+	for (size_t i = 0; i < write_end;)
 	{
-		auto& p = out[i];
+		auto& p = this->out.Particle(i);
 
-		bool inside_x = out[i].Position.x < std::max(A.x, B.x) && out[i].Position.x > std::min(A.x, B.x);
-		bool inside_y = out[i].Position.y < std::max(A.y, B.y) && out[i].Position.y > std::min(A.y, B.y);
+		auto x = this->out.PositionX(i);
+		auto y = this->out.PositionY(i);
 
-		if (out[i].Type == FLUID && ((out[i].Position.y < a * out[i].Position.x + b) == is_right) && inside_x && inside_y)
-			to_erase.push(i);
+		bool inside_x = x < std::max(this->A.x, this->B.x) && x > std::min(this->A.x, this->B.x);
+		bool inside_y = y < std::max(this->A.y, this->B.y) && y > std::min(this->A.y, this->B.y);
+
+		if (this->out.Type(i) == FLUID && ((y < this->a * x + this->b) == this->is_right) && inside_x && inside_y)
+			this->out.SetParticle(i, std::move(this->out.Particle(--write_end))); // TODO: double check the move here
+		else
+			i++;
 	}
 
-	size_t to_erase_count = to_erase.size();
-	size_t read = out.size() - 1;
-	while (!to_erase.empty())
-	{
-		size_t i = to_erase.top();
-		to_erase.pop();
-
-		out[i] = std::move(out[read--]);
-	}
-
-	out.resize(out.size() - to_erase_count);
+	this->out.Resize(write_end);
 }
 

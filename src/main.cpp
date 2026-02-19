@@ -17,11 +17,17 @@
 
 #include <cstring>
 
+#include "Cuda/Test.cuh"
 
 
 #define SIZE 2
 
 void ParseArgs(int argc, char** argv);
+
+void Test_2D_OpenMP_Morton();
+void Test_2D_OpenMP_Hashing();
+void Test_2D_Serial_Morton();
+void Test_2D_Serial_Hashing();
 
 
 // Main code
@@ -29,40 +35,108 @@ int main(int argc, char** argv)
 {
 	ParseArgs(argc, argv);
 	
+	//omp_set_num_threads(8);
 	std::cout << "OpenMP Max Threads: " << omp_get_max_threads() << '\n';
 
-#if SIZE == 2
-	// TODO: define first the initializer, and query the domain min and max from it
-	openmp::MortonSorting<SIZE> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
-#else
-	openmp::MortonSorting<SIZE> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
-#endif
-
-	openmp::SPHSimulation<SIZE> sph(&nf);
-
-
-	//std::cout << fs::current_path() << '\n';
-
-#if SIZE == 2
-	BoxInitializer<SIZE> initializer;
-	sph.InitializeFluid(&initializer);
-
-	ImGuiViewer imguiViewer;
-	sph.AddObserver(&imguiViewer);
-	imguiViewer.Start();
-#else
-	TrayInitializer<SIZE> initializer;
-	sph.InitializeFluid(&initializer);
-
-	XYZExporter exporter;
-	sph.AddObserver(&exporter);
-#endif
-
-	sph.Start();
+	Test_2D_OpenMP_Morton();
 
 	return 0;
 }
 
+
+void Test_2D_OpenMP_Morton()
+{
+	constexpr size_t Size = 2;
+	using Particles = ParticleAoS<Size>;
+
+	// TODO: define first the initializer, and query the domain min and max from it
+	openmp::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+
+	openmp::SPHSimulation<Size, Particles> sph(&nf);
+
+	BoxInitializer<Size, Particles> initializer;
+	sph.InitializeFluid(&initializer);
+
+	ImGuiViewer<Particles> imguiViewer;
+	sph.AddObserver(&imguiViewer);
+	imguiViewer.Start();
+
+	sph.Start();
+}
+void Test_2D_OpenMP_Hashing()
+{
+	constexpr size_t Size = 2;
+	using Particles = ParticleAoS<Size>;
+
+	openmp::SpatialHashing<Size, Particles> nf;
+
+	openmp::SPHSimulation<Size, Particles> sph(&nf);
+
+	BoxInitializer<Size, Particles> initializer;
+	sph.InitializeFluid(&initializer);
+
+	ImGuiViewer<Particles> imguiViewer;
+	sph.AddObserver(&imguiViewer);
+	imguiViewer.Start();
+
+	sph.Start();
+}
+
+void Test_2D_Serial_Morton()
+{
+	constexpr size_t Size = 2;
+	using Particles = ParticleAoS<Size>;
+
+	// TODO: define first the initializer, and query the domain min and max from it
+	serial::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+
+	serial::SPHSimulation<Size, Particles> sph(&nf);
+
+	BoxInitializer<Size, Particles> initializer;
+	sph.InitializeFluid(&initializer);
+
+	ImGuiViewer<Particles> imguiViewer;
+	sph.AddObserver(&imguiViewer);
+	imguiViewer.Start();
+
+	sph.Start();
+}
+void Test_2D_Serial_Hashing()
+{
+	constexpr size_t Size = 2;
+	using Particles = ParticleAoS<Size>;
+
+	serial::SpatialHashing<Size, Particles> nf;
+
+	serial::SPHSimulation<Size, Particles> sph(&nf);
+
+	BoxInitializer<Size, Particles> initializer;
+	sph.InitializeFluid(&initializer);
+
+	ImGuiViewer<Particles> imguiViewer;
+	sph.AddObserver(&imguiViewer);
+	imguiViewer.Start();
+
+	sph.Start();
+}
+
+//void Test_3D_OpenMP_Morton()
+//{
+//	constexpr size_t Size = 3;
+//	using Particles = ParticleAoS<Size>;
+//
+//	openmp::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
+//
+//	openmp::SPHSimulation<Size, Particles> sph(&nf);
+//
+//	TrayInitializer<Size, Particles> initializer;
+//	sph.InitializeFluid(&initializer);
+//
+//	XYZExporter<Particles> exporter;
+//	sph.AddObserver(&exporter);
+//
+//	sph.Start();
+//}
 
 void ParseArgs(int argc, char** argv)
 {

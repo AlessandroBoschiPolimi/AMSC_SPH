@@ -4,11 +4,11 @@
 
 namespace base
 {
-	template <size_t D>
+	template <size_t D, ParticleSet<D> Particles>
 	class SPHSimulation;
 }
 
-template <size_t D>
+template <size_t D, ParticleSet<D> Particles>
 class Observer {
 public:
 	Observer() = default;
@@ -22,8 +22,8 @@ public:
 	virtual void OnEndFrame() {}
 
 	/// Executes on the simulation thread
-	virtual void Attach(base::SPHSimulation<D>* sim) { m_Sim = sim; }
+	virtual void Attach(base::SPHSimulation<D, Particles>* sim) { m_Sim = sim; }
 
 protected:
-	base::SPHSimulation<D>* m_Sim = nullptr;
+	base::SPHSimulation<D, Particles>* m_Sim = nullptr;
 };

@@ -10,8 +10,8 @@ public:
 	using vec_t = Particle<D>::vec_t;
 
 	Kernel(float h_);
-	float GetValue(Particle<D>& xi, Particle<D>& xj) const;
-	vec_t GetGradient(Particle<D>& xi, Particle<D>& xj) const;
+	float GetValue(const vec_t& xi, const vec_t& xj) const;
+	vec_t GetGradient(const vec_t& xi, const vec_t& xj) const;
 
 private:
 	// particle spacing
@@ -35,13 +35,13 @@ Kernel<D>::Kernel(float h_) : h(h_)
 }
 
 template <size_t D>
-float Kernel<D>::GetValue(Particle<D>& xi, Particle<D>& xj) const
+float Kernel<D>::GetValue(const vec_t& xi, const vec_t& xj) const
 {
 	/*
 	Definition of the kernel function according
 	to the presentation slide 52 (cubic slide)
 	*/
-	vec_t r = xi.Position - xj.Position;
+	vec_t r = xi - xj;
 	float q = std::sqrt(Dot(r, r)) / h;
 	float out = 0.0f;
 	if (q < 1.0f)
@@ -60,13 +60,13 @@ float Kernel<D>::GetValue(Particle<D>& xi, Particle<D>& xj) const
 }
 
 template <size_t D>
-Kernel<D>::vec_t Kernel<D>::GetGradient(Particle<D>& xi, Particle<D>& xj) const
+Kernel<D>::vec_t Kernel<D>::GetGradient(const vec_t& xi, const vec_t& xj) const
 {
 	/*
 	Gradient of the kernel function according
 	to the presentation slide 53 (cubic slide)
 	*/
-	vec_t r = xi.Position - xj.Position;
+	vec_t r = xi - xj;
 	float q = std::sqrt(Dot(r, r)) / h;
 	float dW_dq = 0.0f;
 	if (q < 1.0f)

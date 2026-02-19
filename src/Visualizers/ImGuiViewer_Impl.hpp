@@ -1,5 +1,3 @@
-#include "ImGuiViewer.hpp"
-
 #include <format>
 
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
@@ -35,16 +33,18 @@ static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos,
 static Particle<2>::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 
 
-void ImGuiViewer::Attach(base::SPHSimulation<2>* sim)
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::Attach(base::SPHSimulation<2, Particles>* sim)
 {
-	Observer::Attach(sim);
+	Observer<2, Particles>::Attach(sim);
 
 	if (sim != nullptr)
 		m_SimParams = sim->GetParams();
 }
-void ImGuiViewer::OnEndFrame()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::OnEndFrame()
 {
-	if (m_Sim == nullptr)
+	if (this->m_Sim == nullptr)
 		return;
 
 	m_SimTimeCounter += stdclock::now() - m_SimFrameStart;
@@ -62,25 +62,30 @@ void ImGuiViewer::OnEndFrame()
 
 	if (m_Changed)
 	{
-		m_Sim->SetParams(m_SimParams);
-		m_Sim->ApplyCommand(m_Cmd);
+		this->m_Sim->SetParams(m_SimParams);
+		this->m_Sim->ApplyCommand(m_Cmd);
 		m_Changed = false;
 	}
 
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
 	// TODO: triple buffering
-	m_Particles = m_Sim->GetParticles();
+	// TODO: there is no need for m_Particles to have the same memory layout of sim particles
+	//       this could be turned in a copy like
+	//       m_Sim->Populate(m_Particles)
+	//       which fills the particles efficiently (for SoA resize and populate all positions first, then velocity...)
+	m_Particles = this->m_Sim->GetParticles();
 	//m_Grid = m_Sim->GetGrid();
 }
-void ImGuiViewer::OnStartFrame()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::OnStartFrame()
 {
 	std::lock_guard<std::mutex> lock(m_Mutex);
-	if (m_Sim == nullptr)
+	if (this->m_Sim == nullptr)
 		return;
 
-	m_SimParams = m_Sim->GetParams();
-	m_SimTime = m_Sim->GetTime();
-	m_SimProfiling = m_Sim->GetProfiling();
+	m_SimParams = this->m_Sim->GetParams();
+	m_SimTime = this->m_Sim->GetTime();
+	m_SimProfiling = this->m_Sim->GetProfiling();
 
 	auto now = stdclock::now();
 	m_SimTrueTimeCounter += now - m_SimFrameStart;
@@ -89,7 +94,8 @@ void ImGuiViewer::OnStartFrame()
 
 
 
-void ImGuiViewer::DrawStatsWindow()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::DrawStatsWindow()
 {
 #ifdef IMGUI_HAS_DOCK
 	ImGui::SetNextWindowDockID(m_DockIDLeft, ImGuiCond_Appearing);
@@ -108,7 +114,7 @@ void ImGuiViewer::DrawStatsWindow()
 
 	ImGui::Separator();
 	{
-		ImGui::Text("Particles: %d", m_Particles.size());
+		ImGui::Text("Particles: %d", m_Particles.Size());
 		ImGui::Text("UI / SPH (True) FPS: %.1f %.1f (%.1f)", ImGui::GetIO().Framerate, m_SimFPS, m_SimTrueFPS);
 
 		{
@@ -142,10 +148,10 @@ void ImGuiViewer::DrawStatsWindow()
 	}
 	
 	ImGui::Separator();
-	if (!m_Particles.empty())
+	if (!m_Particles.Empty())
 	{
-		ImGui::Text("Position: %.3f %.3f", m_Particles[0].Position.x, m_Particles[0].Position.y);
-		ImGui::Text("Velocity: %.3f %.3f", m_Particles[0].Velocity.x, m_Particles[0].Velocity.y);
+		ImGui::Text("Position: %.3f %.3f", m_Particles.PositionX(0), m_Particles.PositionY(0));
+		ImGui::Text("Velocity: %.3f %.3f", m_Particles.VelocityX(0), m_Particles.VelocityY(0));
 	}
 	if (m_Cmd.Type != Command<2>::NONE)
 		ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
@@ -174,7 +180,8 @@ void ImGuiViewer::DrawStatsWindow()
 
 	ImGui::End();
 }
-void ImGuiViewer::DrawVisualizationWindow()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::DrawVisualizationWindow()
 {
 #ifdef IMGUI_HAS_DOCK
 	ImGui::SetNextWindowDockID(m_DockIDCenter, ImGuiCond_Appearing);
@@ -214,7 +221,9 @@ void ImGuiViewer::DrawVisualizationWindow()
 	);
 
 	// Draw particles
-	for (const auto& p : m_Particles) {
+	for (size_t i = 0; i < m_Particles.Size(); i++) {
+		const Particle<2>& p = m_Particles.GetParticle(i);
+
 		ImVec2 pos = WorldToScreen(p.Position, canvasPos, canvasSize);
 		static constexpr float r = 2.0f;
 		ImU32 color = ImColor::HSV(1.0f, 1.0f, 1.0f);
@@ -262,14 +271,16 @@ void ImGuiViewer::DrawVisualizationWindow()
 	ImGui::End();
 }
 
-void ImGuiViewer::BeginFullscreenDockspace()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::BeginFullscreenDockspace()
 {
 #ifdef IMGUI_HAS_DOCK
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::DockSpaceOverViewport(m_DockspaceID, viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 #endif
 }
-void ImGuiViewer::BuildInitialLayout()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::BuildInitialLayout()
 {
 #ifdef IMGUI_HAS_DOCK
 	static bool first_time = true;
@@ -308,7 +319,8 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-void ImGuiViewer::Loop()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::Loop()
 {
 	if (!Init())
 	{
@@ -368,7 +380,8 @@ void ImGuiViewer::Loop()
 }
 
 
-void ImGuiViewer::Deinit()
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::Deinit()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -377,7 +390,8 @@ void ImGuiViewer::Deinit()
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }
-bool ImGuiViewer::Init()
+template <ParticleSet<2> Particles>
+bool ImGuiViewer<Particles>::Init()
 {
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
