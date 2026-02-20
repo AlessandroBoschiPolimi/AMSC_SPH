@@ -17,7 +17,7 @@
 
 #include <cstring>
 
-#include "Cuda/Test.cuh"
+#include "CUDA/Test.cuh"
 
 
 #define SIZE 2

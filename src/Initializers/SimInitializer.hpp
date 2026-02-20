@@ -129,15 +129,15 @@ inline void SimInitializer<2, Particles>::BuildCircle(Particles& out, coord<floa
 template <ParticleSet<2> Particles>
 inline void SimInitializer<2, Particles>::AddSink(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right) const
 {
-	Sink<2> o(A, B, out, is_right);
-	obj.PushBack(std::make_unique<Sink<2>>(o));
+	Sink<2, Particles> o(A, B, out, is_right);
+	obj.PushBack(std::make_unique<Sink<2, Particles>>(o));
 }
 template <ParticleSet<2> Particles>
 inline void SimInitializer<2, Particles>::AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const
 {
-	Source<2> o(A, B, out, is_right);
+	Source<2, Particles> o(A, B, out, is_right);
 	o.SetParams(v, parts, fp_count, mass);
-	obj.PushBack(std::make_unique<Source<2>>(o));
+	obj.PushBack(std::make_unique<Source<2, Particles>>(o));
 }
 
 

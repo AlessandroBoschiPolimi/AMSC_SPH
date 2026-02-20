@@ -114,7 +114,7 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 
 	ImGui::Separator();
 	{
-		ImGui::Text("Particles: %d", m_Particles.Size());
+		ImGui::Text("Particles: %ld", m_Particles.Size());
 		ImGui::Text("UI / SPH (True) FPS: %.1f %.1f (%.1f)", ImGui::GetIO().Framerate, m_SimFPS, m_SimTrueFPS);
 
 		{
