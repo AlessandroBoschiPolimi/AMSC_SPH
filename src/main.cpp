@@ -33,6 +33,12 @@ void Test_2D_Serial_Hashing();
 // Main code
 int main(int argc, char** argv)
 {
+#ifdef HAS_CUDA
+	Test();
+#else
+	std::cout << "NO CUDA\n";
+#endif
+
 	ParseArgs(argc, argv);
 	
 	//omp_set_num_threads(8);
