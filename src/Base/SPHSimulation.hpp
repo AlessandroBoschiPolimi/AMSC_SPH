@@ -64,7 +64,7 @@ protected:
 	Params m_Params;
 
 	Profiling m_Profiling;
-	size_t m_Frame = 0;
+	u64 m_Frame = 0;
 	float m_Time = 0.0f;
 	
 	Command<D> m_Command;
@@ -98,7 +98,7 @@ public: // Generic interface
 	virtual std::vector<std::vector<idx_t>>& GetNeighbors() = 0;
 
 	float  GetTime()  const { return m_Time; }
-	size_t GetFrame() const { return m_Frame; }
+	u64 GetFrame() const { return m_Frame; }
 	Profiling GetProfiling() const { return m_Profiling; }
 
 	void ApplyCommand(const Command<D>& cmd) { m_Command = cmd; }

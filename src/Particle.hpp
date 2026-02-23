@@ -34,7 +34,7 @@ struct Particle
 
 template <typename P, size_t D>
 concept ParticleSet = std::movable<P> && std::default_initializable<P> &&
-requires(const P cp, P p, P other, size_t i, const Particle<D>& particle, Particle<D>&& particle_move)
+requires(const P cp, P p, P other, size_t i, const Particle<D>& particle, Particle<D>&& particle_move, std::vector<Particle<D>>& out)
 {
 	{ cp.Size()				} -> std::convertible_to<size_t>;
 	{ cp.Empty()			} -> std::convertible_to<bool>;
@@ -43,6 +43,7 @@ requires(const P cp, P p, P other, size_t i, const Particle<D>& particle, Partic
 	{ p.PushBack(particle)	};
 
 	{ cp.GetParticle(i)					} -> std::same_as<Particle<D>>;
+	{ cp.GetParticles(out)				};
 	{ p.SetParticle(i, particle)		};
 	{ p.SetParticle(i, particle_move)	};
 	{ p.SetParticle(i, other, size_t{}) };
@@ -110,33 +111,6 @@ requires(const P cp, P p, P other, size_t i, const Particle<D>& particle, Partic
 	{ p.SetBoundaryPsi(i, float{})	};
 };
 
-//template <size_t D>
-//struct Particles
-//{
-//	struct Particle
-//	{
-//		vec_t Position;
-//		vec_t Velocity;
-//		vec_t A_grav;
-//		vec_t A_visc;
-//		vec_t A_press;
-//		float Mass;
-//		float Density;
-//		float Pressure;
-//		ParticleType Type;
-//		float BoundaryPsi;
-//	};
-//
-//	virtual bool Empty() = 0;
-//	virtual size_t Size() = 0;
-//
-//	virtual float PositionX(idx_t idx) = 0;
-//	virtual float PositionY(idx_t idx) = 0;
-//	virtual float PositionZ(idx_t idx) = 0; // TODO: only for 3D, or make it return garbage
-//	virtual vec_t Position (idx_t idx) = 0;
-//	virtual ParticleType Type(idx_t idx) = 0;
-//};
-
 
 template <size_t D>
 struct ParticleHybrid
@@ -176,6 +150,7 @@ struct ParticleSoA
 };
 
 
+/// Calling Z component functions when D == 2 is undefined behaviour
 template <size_t D>
 struct ParticleAoS
 {
@@ -198,6 +173,7 @@ struct ParticleAoS
 	void PushBack(const Particle<D>& particle) { ParticlesVector.push_back(particle); }
 
 	Particle<D> GetParticle(size_t i) const { return ParticlesVector[i]; }
+	void GetParticles(std::vector<Particle<D>>& out) const { out = ParticlesVector; }
 	void SetParticle(size_t i, const Particle<D>& particle) { ParticlesVector[i] = particle; }
 	void SetParticle(size_t i, Particle<D>&& particle) { ParticlesVector[i] = std::move(particle); }
 	void SetParticle(size_t i, const ParticleAoS& other, size_t src) { ParticlesVector[i] = other.ParticlesVector[src]; }
@@ -264,6 +240,7 @@ struct ParticleAoS
 	void SetType(size_t i, ParticleType type) { ParticlesVector[i].Type = type; }
 	void SetBoundaryPsi(size_t i, float p) { ParticlesVector[i].BoundaryPsi = p; }
 };
+
 
 template <>
 inline float ParticleAoS<2>::PositionZ(size_t i) const { return 0.0f; }

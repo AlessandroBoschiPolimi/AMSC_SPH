@@ -3,7 +3,7 @@
 #include "OpenMP/SPHSimulation.hpp"
 #include "Serial/SPHSimulation.hpp"
 
-#include "Visualizers/XYZExporter.hpp"
+#include "Visualizers/FileExporter.hpp"
 #include "Visualizers/ImGuiViewer.hpp"
 
 #include "OpenMP/Neighbors/SpatialHashing.hpp"
@@ -138,7 +138,7 @@ void Test_2D_Serial_Hashing()
 //	TrayInitializer<Size, Particles> initializer;
 //	sph.InitializeFluid(&initializer);
 //
-//	XYZExporter<Particles> exporter;
+//	FileExporter<Particles> exporter;
 //	sph.AddObserver(&exporter);
 //
 //	sph.Start();
