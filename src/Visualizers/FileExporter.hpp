@@ -4,6 +4,11 @@
 #include <format>
 
 
+enum ExportFormat
+{
+	VTU, VTU_01, XYZ, LANDMINE
+};
+
 template <size_t D, ParticleSet<D> Particles>
 class FileExporter : public Observer<D, Particles> {
 public:
@@ -12,18 +17,28 @@ public:
 	/// Executes on the simulation thread
 	void OnEndFrame() override;
 
+	void SetFrequency(u32 freq) { m_Frequency = std::max(1, freq); }
+	void SetBaseName(const std::string& name) { m_BaseName = name; }
+	void SetFormat(const ExportFormat& format) { m_Format = format; }
+
 private:
 	stdc::time_point<stdclock> m_SimFrameEnd;
+	u32 m_Frequency = 10;
+	std::string m_BaseName = "output";
+
+	ExportFormat m_Format = VTU_01;
 };
 
 
 
-void writeXYZ(const int frame, const std::vector<Particle<3>>& particles);
-void writeXYZ(const int frame, const std::vector<Particle<2>>& particles);
-void writeVTU(const int frame, const std::vector<Particle<3>>& particles);
-void writeVTU(const int frame, const std::vector<Particle<2>>& particles);
-void writeVTUBinary(const int frame, const std::vector<Particle<3>>& particles);
-void writeVTUBinary(const int frame, const std::vector<Particle<2>>& particles);
+void writeXYZ(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles);
+void writeXYZ(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles);
+void writeVTU(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles);
+void writeVTU(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles);
+void writeVTUBinary(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles);
+void writeVTUBinary(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles);
+void writeForComparison(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles);
+void writeForComparison(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles);
 
 
 
@@ -40,7 +55,7 @@ inline void FileExporter<D, Particles>::OnEndFrame() {
 	print_time(now - m_SimFrameEnd);
 	std::cout << ' ';
 
-	if (frame % 10 == 0)
+	if (frame % m_Frequency == 0)
 	{
 		auto writeStart = stdclock::now();
 
@@ -48,7 +63,21 @@ inline void FileExporter<D, Particles>::OnEndFrame() {
 		std::vector<Particle<D>> particles;
 		this->m_Sim->GetParticles().GetParticles(particles);
 		
-		writeVTUBinary(frame / 10, particles);
+		switch (m_Format)
+		{
+		case VTU:
+			writeVTU(m_BaseName, frame / m_Frequency, particles);
+			break;
+		case VTU_01:
+			writeVTUBinary(m_BaseName, frame / m_Frequency, particles);
+			break;
+		case XYZ:
+			writeXYZ(m_BaseName, frame / m_Frequency, particles);
+			break;
+		case LANDMINE:
+			writeForComparison(m_BaseName, frame / m_Frequency, particles);
+			break;
+		}
 		
 		auto writeEnd = stdclock::now();
 		std::cout << "Write ";

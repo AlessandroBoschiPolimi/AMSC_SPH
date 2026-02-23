@@ -2,21 +2,21 @@
 #include "Base/SPHSimulation.hpp"
 
 
-void writeXYZ(const int frame, const std::vector<Particle<3>>& particles)
+void writeXYZ(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles)
 {
-	std::ofstream out(std::format("output-{}.xyz", frame));
+	std::ofstream out(std::format("{}-{}.xyz", basename, frame));
 	for (auto& p : particles)
 		out << p.Position.x << " " << p.Position.y << " " << p.Position.z << "\n";
 }
-void writeXYZ(const int frame, const std::vector<Particle<2>>& particles)
+void writeXYZ(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("output-{}.xyz", frame));
+	std::ofstream out(std::format("{}-{}.xyz", basename, frame));
 	for (auto& p : particles)
 		out << p.Position.x << " " << p.Position.y << " " << 0 << "\n";
 }
 
-void writeVTU(const int frame, const std::vector<Particle<3>>& particles) {
-	std::ofstream out(std::format("output-{}.vtu", frame));
+void writeVTU(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles) {
+	std::ofstream out(std::format("{}-{}.vtu", basename, frame));
 	const size_t N = particles.size();
 
 	out << "<?xml version=\"1.0\"?>\n";
@@ -83,9 +83,9 @@ void writeVTU(const int frame, const std::vector<Particle<3>>& particles) {
 	out << "  </UnstructuredGrid>\n";
 	out << "</VTKFile>\n";
 }
-void writeVTU(const int frame, const std::vector<Particle<2>>& particles)
+void writeVTU(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("output-{}.vtu", frame));
+	std::ofstream out(std::format("{}-{}.vtu", basename, frame));
 	const size_t N = particles.size();
 
 	out << "<?xml version=\"1.0\"?>\n";
@@ -158,8 +158,8 @@ void writeRaw(std::ofstream& out, const T& value) {
 	out.write(reinterpret_cast<const char*>(&value), sizeof(T));
 }
 
-void writeVTUBinary(const int frame, const std::vector<Particle<3>>& particles) {
-	std::ofstream out(std::format("output-{}.vtu", frame), std::ios::binary);
+void writeVTUBinary(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles) {
+	std::ofstream out(std::format("{}-{}.vtu", basename, frame), std::ios::binary);
 	if (!out) return;
 
 	const uint32_t N = static_cast<uint32_t>(particles.size());
@@ -277,9 +277,9 @@ void writeVTUBinary(const int frame, const std::vector<Particle<3>>& particles) 
 	out << "\n  </AppendedData>\n";
 	out << "</VTKFile>\n";
 }
-void writeVTUBinary(const int frame, const std::vector<Particle<2>>& particles)
+void writeVTUBinary(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("output-{}.vtu", frame), std::ios::binary);
+	std::ofstream out(std::format("{}-{}.vtu", basename, frame), std::ios::binary);
 	if (!out) return;
 
 	const uint32_t N = static_cast<uint32_t>(particles.size());
@@ -396,4 +396,36 @@ void writeVTUBinary(const int frame, const std::vector<Particle<2>>& particles)
 
 	out << "\n  </AppendedData>\n";
 	out << "</VTKFile>\n";
+}
+
+
+void writeForComparison(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles)
+{
+	std::ofstream out(std::format("{}-{}.mycoolextension", basename, frame));
+	out << particles.size() << '\n';
+	for (auto& p : particles)
+	{
+		out << p.Position.x << " " << p.Position.y << " " << p.Position.z << "\n";
+		out << p.Velocity.x << " " << p.Velocity.y << " " << p.Velocity.z << "\n";
+		out << p.A_grav.x << " " << p.A_grav.y << " " << p.A_grav.z << "\n";
+		out << p.A_press.x << " " << p.A_press.y << " " << p.A_press.z << "\n";
+		out << p.A_visc.x << " " << p.A_visc.y << " " << p.A_visc.z << "\n";
+		out << p.Density << "\n";
+		out << p.Pressure << "\n";
+	}
+}
+void writeForComparison(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
+{
+	std::ofstream out(std::format("{}-{}.mycoolextension", basename, frame));
+	out << particles.size() << '\n';
+	for (auto& p : particles)
+	{
+		out << p.Position.x << " " << p.Position.y << "\n";
+		out << p.Velocity.x << " " << p.Velocity.y << "\n";
+		out << p.A_grav.x << " " << p.A_grav.y << "\n";
+		out << p.A_press.x << " " << p.A_press.y << "\n";
+		out << p.A_visc.x << " " << p.A_visc.y << "\n";
+		out << p.Density << "\n";
+		out << p.Pressure << "\n";
+	}
 }

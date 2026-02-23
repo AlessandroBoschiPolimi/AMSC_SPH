@@ -85,20 +85,22 @@ public: // Generic interface
 	void SetViscosity       (float val)     { m_Params.Viscosity       = val; }
 	void SetTimeStep        (float val)     { m_Params.TimeStep        = val; }
 	void SetSmoothingLength (float val)     { m_Params.SmoothingLength = val; }
+	void SetFinalTime		(float val)		{ m_Params.FinalTime       = val; }
 	SPHParams GetParams     () const        { return m_Params; }
 	float GetRestDensity    () const        { return m_Params.RestDensity    ; }
 	float GetStiffness      () const        { return m_Params.Stiffness      ; }
 	float GetViscosity      () const        { return m_Params.Viscosity      ; }
 	float GetTimeStep       () const        { return m_Params.TimeStep       ; }
 	float GetSmoothingLength() const        { return m_Params.SmoothingLength; }
+	float GetFinalTime		() const { return m_Params.FinalTime; }
 
 	virtual const Particles& GetParticles() const = 0;
 	virtual Particles& GetParticles() = 0;
 	virtual const std::vector<std::vector<idx_t>>& GetNeighbors() const = 0;
 	virtual std::vector<std::vector<idx_t>>& GetNeighbors() = 0;
 
-	float  GetTime()  const { return m_Time; }
-	u64 GetFrame() const { return m_Frame; }
+	float GetTime()  const { return m_Time;  }
+	u64   GetFrame() const { return m_Frame; }
 	SPHProfiling GetProfiling() const { return m_Profiling; }
 
 	void ApplyCommand(const Command<D>& cmd) { m_Command = cmd; }

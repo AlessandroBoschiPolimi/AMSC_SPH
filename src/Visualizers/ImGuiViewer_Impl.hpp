@@ -106,7 +106,7 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 	{
 		m_Changed |= ImGui::SliderFloat("Rest Density", &m_SimParams.RestDensity, 500, 1500, "%.0f");
 		m_Changed |= ImGui::SliderFloat("Stiffness", &m_SimParams.Stiffness, 0, 1, "%.5f");
-		m_Changed |= ImGui::SliderFloat("Viscosity", &m_SimParams.Viscosity, 0, 1, "%.5f");
+		m_Changed |= ImGui::SliderFloat("Viscosity", &m_SimParams.Viscosity, 0, 5e-4, "%.5f");
 		m_Changed |= ImGui::SliderFloat("Timestep", &m_SimParams.TimeStep, 0.0000f, 0.001f, "%.7f");
 		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength, 0.0001f, 0.5f, "%.7f");
 		m_Changed |= ImGui::SliderFloat("Final Time", &m_SimParams.FinalTime, 0.0f, 100.0f, "%.2f");
