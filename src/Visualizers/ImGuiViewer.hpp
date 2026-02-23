@@ -73,8 +73,8 @@ private:
 	Command<2> m_Cmd;
 
 	float m_SimTime = 0;
-	base::SPHSimulation<2, Particles>::Profiling m_SimProfiling;
-	base::SPHSimulation<2, Particles>::Params m_SimParams;
+	base::SPHProfiling m_SimProfiling;
+	base::SPHParams m_SimParams;
 
 	enum ColoringParam
 	{
