@@ -71,7 +71,7 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	// TODO: triple buffering
 	// TODO: there is no need for m_Particles to have the same memory layout of sim particles
 	//       this could be turned in a copy like
-	//       m_Sim->Populate(m_Particles)
+	//       m_Sim->GetParticles().Populate(m_Particles)
 	//       which fills the particles efficiently (for SoA resize and populate all positions first, then velocity...)
 	m_Particles = this->m_Sim->GetParticles();
 	//m_Grid = m_Sim->GetGrid();
