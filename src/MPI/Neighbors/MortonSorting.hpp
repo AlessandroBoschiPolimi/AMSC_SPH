@@ -65,7 +65,6 @@ private:
 	/// Requires m_MinGrid and m_MaxGrid to be up to date, so call only after InitializeFrame (for the current frame)
 	bool OutsideDomain(const cell_pos_t& pos);
 
-
 private:
 	SPHSimulation<D, Particles>* m_Sim = nullptr;
 
@@ -75,6 +74,10 @@ private:
 	std::vector<size_t> m_CellStart;
 	std::vector<size_t> m_CellEnd;
 	std::vector<uint64_t> m_UniqueCells;
+	
+	std::vector<Particle<D>*> particles;
+	std::vector<size_t> indices;
+	std::vector<size_t> indices_rev;
 
 	uint64_t m_MinCode;
 	uint64_t m_MaxCode;
@@ -104,10 +107,14 @@ inline void MortonSorting<D, Particles>::InitializeFrame(SPHSimulation<D, Partic
 	for (size_t i = 0; i < size; ++i)
 	{
 		cell_pos_t cell;
+		int idx;
 		if (i < particles_local.Size())
-			 cell = GetCellPosition(particles_local.Position(i), h);
+			cell = GetCellPosition(particles_local.Position(i), h);
 		else
-			cell = GetCellPosition(particles_ghost.Position(i), h);
+		{
+			idx = i - particles_local.Size();
+			cell = GetCellPosition(particles_ghost.Position(idx), h);
+		}
 		if (OutsideDomain(cell))
 			continue;
 
@@ -116,8 +123,8 @@ inline void MortonSorting<D, Particles>::InitializeFrame(SPHSimulation<D, Partic
 
 	// Sort by Morton code
 	{
-		std::vector<size_t> indices;
 		indices.resize(size);
+		indices_rev.resize(size);
 		std::iota(indices.begin(), indices.end(), 0);
 
 		std::sort(indices.begin(), indices.end(),
@@ -127,14 +134,15 @@ inline void MortonSorting<D, Particles>::InitializeFrame(SPHSimulation<D, Partic
 			});
 
 		{
-			Particles tmp;
-			tmp.Resize(size);
+			particles.resize(size);
 			for (size_t i = 0; i < indices.size(); ++i)
-				if (i < particles_local.Size())
-					tmp.SetParticle(i, particles_local, indices[i]);
+			{
+				if (indices[i] < particles_local.Size())
+					particles[i] = &particles_local.ParticlesVector[indices[i]];
 				else
-					tmp.SetParticle(i, particles_ghost, indices[i]);
-			Particles& particles = std::move(tmp);
+					particles[i] = &particles_ghost.ParticlesVector[indices[i] - particles_local.Size()];
+				indices_rev[indices[i]] = i;
+			}
 		}
 
 		{
@@ -203,7 +211,8 @@ inline void MortonSorting<D, Particles>::Find(idx_t i, std::vector<idx_t>& out)
 	const float h = m_Sim->GetSmoothingLength();
 	const float h2 = h * h;
 	
-	auto pi = particles_local.Position(i);
+	int ii = indices_rev[i];
+	auto pi = particles[ii]->Position;
 	cell_pos_t base = GetCellPosition(pi, h);
 
 	for (const coord<int, D>& off : NeighborOffsets)
@@ -242,14 +251,12 @@ inline void MortonSorting<D, Particles>::Find(idx_t i, std::vector<idx_t>& out)
 		// iterate particles in this neighbor cell
 		for (size_t j = m_CellStart[idx]; j < m_CellEnd[idx]; ++j)
 		{
-			if (i == j) continue;
-			coord<float, D> r;
-			if (j < particles_local.Size())
-				r = particles_local.Position(j) - pi;
-			else
-				r = particles_ghost.Position(j) - pi;
+			if (ii == j) continue;
+			coord<float, D> r = particles[j]->Position - pi;
 			if (Dot(r, r) < h2)
-				out.push_back(j);
+			{
+				out.push_back(indices[j]);
+			}
 		}
 	}
 }
