@@ -24,6 +24,11 @@ file(GLOB_RECURSE CUDA_SOURCES
     src/*.cu
 )
 
+list(REMOVE_ITEM CPP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main_mpi.cpp
+)
+
 # ==================================================
 # CUDA (Optional)
 # ==================================================
@@ -88,20 +93,32 @@ add_subdirectory(vendor/glfw)
 find_package(OpenMP REQUIRED)
 
 # ==================================================
+# MPI (optional)
+# ==================================================
+find_package(MPI REQUIRED)
+
+# ==================================================
 # Executable
 # ==================================================
 if (HAS_CUDA)
     add_executable(${PROJECT_NAME}
+	src/main.cpp
         ${CPP_SOURCES}
         ${CUDA_SOURCES}
         ${IMGUI_SOURCES}
     )
 else()
     add_executable(${PROJECT_NAME}
+	src/main.cpp
         ${CPP_SOURCES}
         ${IMGUI_SOURCES}
     )
 endif()
+add_executable(${PROJECT_NAME}_MPI
+     src/main_mpi.cpp
+     ${CPP_SOURCES}
+     ${IMGUI_SOURCES}
+)
 
 # ==================================================
 # Includes
@@ -113,7 +130,13 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     vendor/glad/include
     vendor/glfw/include
 )
-
+target_include_directories(${PROJECT_NAME}_MPI PRIVATE
+    src
+    vendor/imgui
+    vendor/imgui/backends
+    vendor/glad/include
+    vendor/glfw/include
+)
 # ==================================================
 # Link Libraries
 # ==================================================
@@ -121,6 +144,12 @@ target_link_libraries(${PROJECT_NAME}
     glad
     glfw
     OpenMP::OpenMP_CXX
+)
+
+target_link_libraries(${PROJECT_NAME}_MPI
+    glad
+    glfw
+    MPI::MPI_CXX
 )
 
 if (HAS_CUDA)
@@ -142,8 +171,14 @@ if (APPLE)
     target_link_libraries(${PROJECT_NAME}
         "-framework OpenGL"
     )
+    target_link_libraries(${PROJECT_NAME}_MPI
+        "-framework OpenGL"
+    )
 elseif (WIN32)
     target_link_libraries(${PROJECT_NAME}
+        opengl32
+    )
+    target_link_libraries(${PROJECT_NAME}_MPI
         opengl32
     )
 else ()
@@ -154,12 +189,23 @@ else ()
         OpenGL::GL
         X11::X11
     )
+    target_link_libraries(${PROJECT_NAME}_MPI
+        OpenGL::GL
+        X11::X11
+    )
 endif()
 
 # ==================================================
 # Build Configuration Macros
 # ==================================================
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:MY_DEBUG>
+    $<$<CONFIG:Release>:MY_RELEASE>
+    $<$<CONFIG:Release>:MY_NDEBUG>
+    $<$<CONFIG:RelWithDebInfo>:MY_DIST>
+    $<$<CONFIG:RelWithDebInfo>:MY_DEBUG>
+)
+target_compile_definitions(${PROJECT_NAME}_MPI PRIVATE
     $<$<CONFIG:Debug>:MY_DEBUG>
     $<$<CONFIG:Release>:MY_RELEASE>
     $<$<CONFIG:Release>:MY_NDEBUG>
