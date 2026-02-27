@@ -25,8 +25,8 @@ struct SPHParams
 	float Stiffness = 1e2f;
 	float Viscosity = 1e-6f;
 	float ViscosityRigid = 5e-3f;
-	float TimeStep = 0.0003f;
-	float SmoothingLength = 0.007f;
+	float TimeStep = 0.00017f;
+	float SmoothingLength = 0.0035f;
 	float PressureTol = 1e-2f;
 	float FinalTime = 100.0;
 };

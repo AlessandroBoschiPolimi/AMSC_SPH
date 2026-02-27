@@ -22,9 +22,9 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 	int maxx = 100, maxy = 100;
 	vec_t vertical_direction{ 0, -1 };
 	vec_t zero_direction{ 0, 0 };
-	for (float x = 2; x < maxx / 2; x += 0.5)
+	for (float x = 2; x < 84; x += 0.25)
 	{
-		for (float y = 25.3; y < 78; y += 0.5)
+		for (float y = 5.3; y < 95; y += 0.25)
 		{
 			Particle<2> p;
 			p.Type = FLUID;
@@ -32,7 +32,7 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 			p.Position.x = float(x) / maxx;
 			p.Velocity = zero_direction;
 			// Arbitrary Mass to match with other constants
-			p.Mass = 0.025f;
+			p.Mass = 0.01f;
 			p.A_grav = G_CONSTANT * vertical_direction;
 			out.PushBack(p);
 		}
@@ -41,13 +41,13 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 	// TODO: Add walls options to properties
 	for (int i = 0; i < 2; i++)
 	{
-		this->BuildWallAlongX(out, 0.25 - h * i, 0, 1.0, 0.0025);
-		this->BuildWallAlongX(out, 0.8 + h * i, 0, 1.0, 0.0025);
-		this->BuildWallAlongY(out, 0 + h   * i, 0.25, 0.8, 0.0025);
+		this->BuildWallAlongX(out, 0.04 - h * i, 0, 1.0, 0.001);
+		this->BuildWallAlongX(out, 0.98 + h * i, 0, 1.0, 0.001);
+		this->BuildWallAlongY(out, 0 + h   * i, 0.04, 0.98, 0.001);
 	}
-	this->BuildWallAlongY(out, 1.0, 0.25, 0.8, 0.0025);
-	this->BuildBox(out, coord<float, 2>{0.6, 0.255}, 0.1, 0.1, 0.003);
-	this->BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.003);
+	this->BuildWallAlongY(out, 1.0, 0.04, 0.98, 0.001);
+	this->BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.001);
+	//this->BuildCircle(out, coord<float, 2>{0.92, 0.255}, 0.05, 0.001);
 
 	//AddSink(obj, { 0.5, 0.2 }, { 0.7, 0.3 }, out, false);
 	//AddSource(obj, { 0.4, 0.6 }, { 0.5, 0.5 }, out, true, 0.5, 10, 100, 0.025);

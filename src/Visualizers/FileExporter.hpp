@@ -17,7 +17,7 @@ public:
 	/// Executes on the simulation thread
 	void OnEndFrame() override;
 
-	void SetFrequency(u32 freq) { m_Frequency = std::max(1, freq); }
+	void SetFrequency(u32 freq) { m_Frequency = std::max(static_cast<u32>(1), freq); }
 	void SetBaseName(const std::string& name) { m_BaseName = name; }
 	void SetFormat(const ExportFormat& format) { m_Format = format; }
 
