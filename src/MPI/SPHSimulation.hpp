@@ -60,6 +60,7 @@ protected:
 	void ExchangeParticlesLeft();
 	void ExchangeParticlesRight();
 	void ExchangeSizes();
+	void UpdateGhost();
 	void PickLocalGhost(idx_t i, idx_t &ind, Particles* &particle);
 
 private:
@@ -77,6 +78,8 @@ private:
 	Particles m_Particles_local;
 	Particles m_Particles_ghost;
 	std::vector<int> size_local;
+	std::vector<int> right_ghost_indices, left_ghost_indices;
+	int size_ghost_right = 0, size_ghost_left = 0;
 };
 
 
@@ -106,6 +109,12 @@ inline void SPHSimulation<D, Particles>::Start()
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::Step()
 {
+	right_ghost_indices.clear();
+	left_ghost_indices.clear();
+	m_Particles_ghost.Clear();
+	ExchangeParticlesRight();
+	ExchangeParticlesLeft();
+	ExchangeSizes();
 	if (mpi_rank == 0)
 		this->NotifyStartFrame();
 	m_Neighbors.clear();
@@ -136,13 +145,9 @@ inline void SPHSimulation<D, Particles>::Step()
 	
 		{ this->m_Profiling.IterativePressure = stdclock::now() - start; }
 	}
-	this->m_Time += this->m_Params.TimeStep;
 	MPI_Barrier(mpi_comm);
 	GatherParticles();
-	m_Particles_ghost.Clear();
-	ExchangeParticlesLeft();
-	ExchangeParticlesRight();
-	ExchangeSizes();
+	this->m_Time += this->m_Params.TimeStep;
 	this->m_Frame++;
 	if (mpi_rank == 0)
 		this->NotifyEndFrame();
@@ -180,6 +185,7 @@ inline void SPHSimulation<D, Particles>::Initialize()
 			else
 				ComputeBoundaryPsi(i);
 		}
+		UpdateGhost();
 	}
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
@@ -193,6 +199,7 @@ inline void SPHSimulation<D, Particles>::Initialize()
 			UpdatePositionInitial(i);
 		}
 	}
+	UpdateGhost();
 }
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::IterativePressure()
@@ -210,6 +217,7 @@ inline void SPHSimulation<D, Particles>::IterativePressure()
 		ComputeDensity(i);
 		ComputePressure(i);
 	}
+	UpdateGhost();
 	if (this->m_Command.Type != Command<D>::NONE)
 	{
 		for (int i = 0; i < m_Particles_local.Size(); i++)
@@ -470,77 +478,34 @@ inline void SPHSimulation<D, Particles>::FindBounds()
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::SplitParticles()
 {
-	int size, size_ghost_left, size_ghost_right;
+	int size;
 	size_local.resize(mpi_size);
 	if (mpi_rank == 0)
 	{
 		float chunk = (max_x - min_x) / static_cast<float>(mpi_size);
 		std::vector<std::vector<Particle<D>>> division;
-		std::vector<std::vector<Particle<D>>> division_ghost_right;
-		std::vector<std::vector<Particle<D>>> division_ghost_left;
 		division.resize(mpi_size);
-		division_ghost_left.resize(mpi_size);
-		division_ghost_right.resize(mpi_size);
 		for (idx_t i = 0; i < m_Particles.Size(); ++i)
 		{
 			float x = m_Particles.PositionX(i);
-			int sector = std::clamp(static_cast<int>(std::floor((x - min_x ) / chunk)),
+			int sector = std::clamp(static_cast<int>(std::floor((x - min_x) / chunk)),
 				       	0, mpi_size - 1);
-			int sector_left = std::max(0, 
-				static_cast<int>(std::floor( (x - this->m_Params.SmoothingLength - min_x) / chunk)));
-			int sector_right = std::min(mpi_size - 1, 
-			   static_cast<int>(std::floor( (x + this->m_Params.SmoothingLength - min_x) / chunk)));
 			division[sector].push_back(m_Particles.GetParticle(i));
-			if (sector_left != sector)
-				division_ghost_left[sector_left].push_back(m_Particles.GetParticle(i));
-			if (sector_right != sector)
-				division_ghost_right[sector_right].push_back(m_Particles.GetParticle(i));
 		}
 		for (int i = 1; i < mpi_size; i++)
 		{
 			size = division[i].size();
 			size_local[i] = size * sizeof(Particle<D>);
-			size_ghost_right = division_ghost_right[i].size();
-			size_ghost_left = division_ghost_left[i].size();
 			//Send local particals to each process except for rank 0 -> handle locally
 			MPI_Send(&size, 1 , MPI_INT, i,
 			0,  mpi_comm);
 			MPI_Send(division[i].data(), size * sizeof(Particle<D>) , MPI_BYTE, i,
 			1,  mpi_comm);
 
-			//Block to send the ghost elements
-//			{
-//				// (1) The left ghosts of 1 handled locally, instead send right ghosts from 0 to 1
-//				if (i == 1)
-//				{
-//					int size_tmp = division_ghost_right[0].size();
-//					MPI_Send(&size_tmp, 1 , MPI_INT, 1,
-//					4,  mpi_comm);
-//					MPI_Send(division_ghost_right[0].data(), division_ghost_right[0].size() * sizeof(Particle<D>) , MPI_BYTE, 1,
-//					5,  mpi_comm);
-//				}
-//				//(2) Send left ghosts of each process
-//				else
-//				{
-//					MPI_Send(&size_ghost_left, 1 , MPI_INT, i - 1,
-//					2,  mpi_comm);
-//					MPI_Send(division_ghost_left[i].data(), size_ghost_left * sizeof(Particle<D>) , MPI_BYTE, i - 1,
-//					3,  mpi_comm);
-//				}
-//				//(3) Send left ghosts of all processes except for left most one
-//				if (i != mpi_size - 1)
-//				{
-//					MPI_Send(&size_ghost_right, 1 , MPI_INT, i + 1,
-//					4,  mpi_comm);
-//					MPI_Send(division_ghost_right[i].data(), size_ghost_right * sizeof(Particle<D>) , MPI_BYTE, i + 1,
-//					5,  mpi_comm);
-//				}
-//			}
 		}
 //		//Handle process 0 locally
 		size_local[0] = division[0].size() * sizeof(Particle<D>);
 		m_Particles_local.ParticlesVector = division[0];
-//		m_Particles_ghost.ParticlesVector = division_ghost_left[1];
 	}
 //	//Block of Receiving messages of particles
 	if (mpi_rank != 0)
@@ -555,32 +520,6 @@ inline void SPHSimulation<D, Particles>::SplitParticles()
 			MPI_Recv(m_Particles_local.ParticlesVector.data(), size * sizeof(Particle<D>) , MPI_BYTE , 0 ,
 			1, mpi_comm, MPI_STATUS_IGNORE);
 		}
-//
-//		//Each process receives their ghost particles
-//		{
-//			//Receive block of (1) and (2)
-//			{
-//				MPI_Recv(&size_ghost_left , 1 , MPI_INT , 0 ,
-//				2, mpi_comm, MPI_STATUS_IGNORE);
-//
-//				m_Particles_ghost.ParticlesVector.resize(size_ghost_left);
-//
-//				MPI_Recv(m_Particles_ghost.ParticlesVector.data(), size_ghost_left * sizeof(Particle<D>) , MPI_BYTE , 0,
-//				3, mpi_comm, MPI_STATUS_IGNORE);
-//			}
-//			//Receive block of (3)
-//			if (mpi_rank != mpi_size - 1)
-//			{
-//				MPI_Recv(&size_ghost_right , 1 , MPI_INT , 0 ,
-//				4, mpi_comm, MPI_STATUS_IGNORE);
-//
-//				int old_size = m_Particles_ghost.Size();
-//				m_Particles_ghost.ParticlesVector.resize(size_ghost_right + old_size);
-//
-//				MPI_Recv(m_Particles_ghost.ParticlesVector.data() + old_size, size_ghost_right * sizeof(Particle<D>) , MPI_BYTE , 0 ,
-//				5, mpi_comm, MPI_STATUS_IGNORE);
-//			}
-//		}
 	}
 	MPI_Bcast(size_local.data() , mpi_size , MPI_INT ,
 	0 ,mpi_comm) ;
@@ -623,15 +562,7 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesLeft()
 		{
 			float pos_x = m_Particles_local.PositionX(i);
 			float h = this->m_Params.SmoothingLength;
-			if (pos_x < left_bound + h && pos_x > left_bound)
-				left_ghost.push_back(m_Particles_local.GetParticle(i));
 			if (pos_x <= left_bound && pos_x > left_bound - h)
-			{
-				left_owned.push_back(m_Particles_local.GetParticle(i));
-				//m_Particles_ghost.PushBack(m_Particles_local.GetParticle(i));
-				to_erase.push_back(i);
-			}
-			if (pos_x < left_bound - h)
 			{
 				left_owned.push_back(m_Particles_local.GetParticle(i));
 				to_erase.push_back(i);
@@ -641,6 +572,16 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesLeft()
 		for (int idx : to_erase)
 		{
     			m_Particles_local.ParticlesVector.erase(m_Particles_local.ParticlesVector.begin() + idx);
+		}
+		for (idx_t i = 0; i < m_Particles_local.Size(); ++i)
+		{
+			float pos_x = m_Particles_local.PositionX(i);
+			float h = this->m_Params.SmoothingLength;
+			if (pos_x < left_bound + h && pos_x > left_bound)
+			{
+				left_ghost.push_back(m_Particles_local.GetParticle(i));
+				left_ghost_indices.push_back(i);
+			}
 		}
 		int size_owned = left_owned.size();
 		int size_ghost = left_ghost.size();
@@ -667,8 +608,9 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesLeft()
 
 		MPI_Recv(&size_ghost, 1 , MPI_INT , sender ,
 		1, mpi_comm, MPI_STATUS_IGNORE);
-		
+		size_ghost_left = size_ghost;
 		int old_size_ghost = m_Particles_ghost.Size();
+
 		m_Particles_ghost.ParticlesVector.resize(old_size_ghost + size_ghost);
 
 		MPI_Recv(m_Particles_local.ParticlesVector.data() + old_size_local,
@@ -695,15 +637,7 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesRight()
 		{
 			float pos_x = m_Particles_local.PositionX(i);
 			float h = this->m_Params.SmoothingLength;
-			if (pos_x > right_bound - h && pos_x <= right_bound)
-				right_ghost.push_back(m_Particles_local.GetParticle(i));
-			if (pos_x > right_bound && pos_x < right_bound + h)
-			{
-				right_owned.push_back(m_Particles_local.GetParticle(i));
-				//m_Particles_ghost.PushBack(m_Particles_local.GetParticle(i));
-				to_erase.push_back(i);
-			}
-			if (pos_x > right_bound + h)
+			if (pos_x > right_bound)
 			{
 				right_owned.push_back(m_Particles_local.GetParticle(i));
 				to_erase.push_back(i);
@@ -713,6 +647,16 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesRight()
 		for (int idx : to_erase)
 		{
     			m_Particles_local.ParticlesVector.erase(m_Particles_local.ParticlesVector.begin() + idx);
+		}
+		for (idx_t i = 0; i < m_Particles_local.Size(); ++i)
+		{
+			float pos_x = m_Particles_local.PositionX(i);
+			float h = this->m_Params.SmoothingLength;
+			if (pos_x > right_bound - h && pos_x <= right_bound)
+			{
+				right_ghost.push_back(m_Particles_local.GetParticle(i));
+				right_ghost_indices.push_back(i);
+			}
 		}
 		int size_owned = right_owned.size();
 		int size_ghost = right_ghost.size();
@@ -739,6 +683,7 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesRight()
 
 		MPI_Recv(&size_ghost, 1 , MPI_INT , sender ,
 		1, mpi_comm, MPI_STATUS_IGNORE);
+		size_ghost_right = size_ghost;
 		
 		int old_size_ghost = m_Particles_ghost.Size();
 		m_Particles_ghost.ParticlesVector.resize(old_size_ghost + size_ghost);
@@ -784,5 +729,52 @@ inline void SPHSimulation<D, Particles>::PickLocalGhost(idx_t j, idx_t &ind, Par
 
 	}
 }
+
+template <size_t D, ParticleSet<D> Particles>
+inline void SPHSimulation<D, Particles>::UpdateGhost()
+{
+	m_Particles_ghost.Clear();
+	m_Particles_ghost.Resize(size_ghost_right + size_ghost_left);
+	std::vector<Particle<D>> right_ghost, left_ghost;
+	right_ghost.reserve(right_ghost_indices.size());
+	left_ghost.reserve(left_ghost_indices.size());
+	//Handle ghosts of the right section
+	if (mpi_rank != mpi_size - 1)
+	{
+		int receiver = mpi_rank + 1;
+		for (auto &i : right_ghost_indices)
+		{
+			right_ghost.push_back(m_Particles_local.GetParticle(i));
+		}
+		MPI_Send(right_ghost.data(), right_ghost.size() * sizeof(Particle<D>) , MPI_BYTE, receiver,
+		0,  mpi_comm);
+	}
+	if (mpi_rank != 0)
+	{
+		int sender = mpi_rank - 1;
+		MPI_Recv(m_Particles_ghost.ParticlesVector.data(),
+		size_ghost_right * sizeof(Particle<D>) , MPI_BYTE , sender ,
+		0, mpi_comm, MPI_STATUS_IGNORE);
+	}
+	//Handle ghost of the left domain
+	if (mpi_rank != 0)
+	{
+		int receiver = mpi_rank - 1;
+		for (auto &i : left_ghost_indices)
+		{
+			left_ghost.push_back(m_Particles_local.GetParticle(i));
+		}
+		MPI_Send(left_ghost.data(), left_ghost.size() * sizeof(Particle<D>) , MPI_BYTE, receiver,
+		1,  mpi_comm);
+	}
+	if (mpi_rank != mpi_size - 1)
+	{
+		int sender = mpi_rank + 1;
+		MPI_Recv(m_Particles_ghost.ParticlesVector.data() + size_ghost_right,
+		size_ghost_left * sizeof(Particle<D>) , MPI_BYTE , sender ,
+		1, mpi_comm, MPI_STATUS_IGNORE);
+	}
+}
+
 
 }
