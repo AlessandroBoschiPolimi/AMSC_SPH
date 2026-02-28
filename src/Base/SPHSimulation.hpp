@@ -54,7 +54,6 @@ public: // Simulation interface
 	virtual void InitializeFluid(const SimInitializer<D, Particles>* init) = 0;
 	virtual void Start() = 0;
 
-
 protected: // Simulation functions
 
 	virtual void Step() = 0;
@@ -72,12 +71,16 @@ protected:
 
 	std::vector<Observer<D, Particles>*> m_Observers;
 
+	std::string m_Name = "Simulation";
 
 public: // Generic interface
 	void AddObserver(Observer<D, Particles>* obs) {
 		obs->Attach(this);
 		m_Observers.push_back(obs);
 	}
+
+	void SetName(const std::string& name) { m_Name = name; }
+	std::string GetName() const { return m_Name; }
 
 	void SetParams(const SPHParams& params) { m_Params = params; }
 	void SetRestDensity     (float val)     { m_Params.RestDensity     = val; }

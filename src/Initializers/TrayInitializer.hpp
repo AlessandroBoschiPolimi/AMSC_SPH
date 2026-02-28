@@ -1,3 +1,4 @@
+#pragma once
 #include "SimInitializer.hpp"
 
 
@@ -11,6 +12,8 @@ public:
 	using Objects = SimInitializer<3, Particles>::Objects;
 
 	void Init(Particles& out, float h, Objects& obj) const override;
+
+	std::pair<coord<float, 3>, coord<float, 3>> GetDomain() const override;
 };
 
 template <ParticleSet<3> Particles>
@@ -57,4 +60,10 @@ inline void TrayInitializer<3, Particles>::Init(Particles& out, float h, Objects
 			BuildWallAlongXZ(out, maxy - h / 400 * i, 0, maxy, 0, maxz, 0.0025);
 		}
 	}
+}
+
+template<ParticleSet<3> Particles>
+inline std::pair<coord<float, 3>, coord<float, 3>> TrayInitializer<3, Particles>::GetDomain() const
+{
+	return std::pair<coord<float, 3>, coord<float, 3>>{{ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f }};
 }

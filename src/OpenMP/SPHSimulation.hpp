@@ -82,6 +82,7 @@ inline SPHSimulation<D, Particles>::SPHSimulation(NeighborFinder<D, Particles>* 
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::Start()
 {
+	std::cout << "Start!\n";
 	#pragma omp parallel
 	{
 		while (this->m_Time < this->m_Params.FinalTime)
@@ -419,7 +420,7 @@ inline void SPHSimulation<D, Particles>::EvaluateCommand(idx_t i)
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::InitializeFluid(const SimInitializer<D, Particles>* init)
 {
-	std::cout << "Initializing" << '\n';
+	std::cout << "Initializing " << this->m_Name << '\n';
 	init->Init(m_Particles, this->m_Params.SmoothingLength, this->m_Objects);
 	std::cout << "Particles: " << m_Particles.Size() << '\n';
 }

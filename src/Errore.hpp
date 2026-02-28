@@ -139,4 +139,6 @@ void CompareSeries(const std::string& baseA, const std::string& baseB)
 	std::cout << "Density:     max = " << stats.density.max << ", avg = " << stats.density.Avg() << "\n";
 
 	std::cout << "Pressure:    max = " << stats.pressure.max << ", avg = " << stats.pressure.Avg() << "\n";
+	
+	std::cout << '\n';
 }

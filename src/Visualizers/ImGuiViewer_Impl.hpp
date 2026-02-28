@@ -39,7 +39,10 @@ void ImGuiViewer<Particles>::Attach(base::SPHSimulation<2, Particles>* sim)
 	Observer<2, Particles>::Attach(sim);
 
 	if (sim != nullptr)
+	{
 		m_SimParams = sim->GetParams();
+		m_SimName = sim->GetName();
+	}
 }
 template <ParticleSet<2> Particles>
 void ImGuiViewer<Particles>::OnEndFrame()
@@ -74,7 +77,6 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	//       m_Sim->GetParticles().Populate(m_Particles)
 	//       which fills the particles efficiently (for SoA resize and populate all positions first, then velocity...)
 	m_Particles = this->m_Sim->GetParticles();
-	//m_Grid = m_Sim->GetGrid();
 }
 template <ParticleSet<2> Particles>
 void ImGuiViewer<Particles>::OnStartFrame()
@@ -101,6 +103,8 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 	ImGui::SetNextWindowDockID(m_DockIDLeft, ImGuiCond_Appearing);
 #endif
 	ImGui::Begin("SPH Stats");
+
+	ImGui::Text(m_SimName.c_str());
 
 	ImGui::Separator();
 	{

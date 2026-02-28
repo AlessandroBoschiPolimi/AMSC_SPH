@@ -26,6 +26,9 @@ public:
 	void BuildCircle(Particles& out, coord<float, 2> centre, float radius, float delta) const;
 	void AddSink(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right) const;
 	void AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const;
+
+	/// Returns { min-xy, max-xy }
+	virtual std::pair<coord<float, 2>, coord<float, 2>> GetDomain() const = 0;
 };
 
 template <ParticleSet<3> Particles>
@@ -42,6 +45,9 @@ public:
 	void BuildWallAlongXZ(Particles& out, float y, float minx, float maxx, float minz, float maxz, float delta) const;
 	void BuildWallAlongYZ(Particles& out, float x, float miny, float maxy, float minz, float maxz, float delta) const;
 	void BuildWallAlongXY(Particles& out, float z, float minx, float maxx, float miny, float maxy, float delta) const;
+
+	/// Returns { min-xyz, max-xyz }
+	virtual std::pair<coord<float, 3>, coord<float, 3>> GetDomain() = 0;
 };
 
 
@@ -129,15 +135,14 @@ inline void SimInitializer<2, Particles>::BuildCircle(Particles& out, coord<floa
 template <ParticleSet<2> Particles>
 inline void SimInitializer<2, Particles>::AddSink(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right) const
 {
-	Sink<2, Particles> o(A, B, out, is_right);
-	obj.PushBack(std::make_unique<Sink<2, Particles>>(o));
+	obj.push_back(std::make_unique<Sink<2, Particles>>(A, B, out, is_right));
 }
 template <ParticleSet<2> Particles>
 inline void SimInitializer<2, Particles>::AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const
 {
-	Source<2, Particles> o(A, B, out, is_right);
-	o.SetParams(v, parts, fp_count, mass);
-	obj.PushBack(std::make_unique<Source<2, Particles>>(o));
+	auto o = std::make_unique<Source<2, Particles>>(A, B, out, is_right);
+	o->SetParams(v, parts, fp_count, mass);
+	obj.push_back(std::move(o));
 }
 
 

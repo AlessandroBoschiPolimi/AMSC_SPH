@@ -35,10 +35,10 @@
 			}
 		},
 		{
-			"name": "windows-dist",
-			"displayName": "Windows Dist",
+			"name": "windows-reldeb",
+			"displayName": "Windows RelDeb",
 			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/build/dist",
+			"binaryDir": "${sourceDir}/build/reldeb",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
 				"CMAKE_C_COMPILER": "cl",
@@ -79,10 +79,10 @@
 			}
 		},
 		{
-			"name": "linux-dist",
-			"displayName": "Linux Dist",
+			"name": "linux-reldeb",
+			"displayName": "Linux RelDeb",
 			"generator": "Unix Makefiles",
-			"binaryDir": "${sourceDir}/build/dist",
+			"binaryDir": "${sourceDir}/build/reldeb",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo"
 			},
@@ -104,12 +104,20 @@
 			"configurePreset": "windows-release"
 		},
 		{
+			"name": "windows-reldeb",
+			"configurePreset": "windows-reldeb"
+		},
+		{
 			"name": "linux-debug",
 			"configurePreset": "linux-debug"
 		},
 		{
 			"name": "linux-release",
 			"configurePreset": "linux-release"
+		},
+		{
+			"name": "linux-reldeb",
+			"configurePreset": "linux-reldeb"
 		}
 	],
 

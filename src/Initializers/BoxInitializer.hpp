@@ -1,3 +1,4 @@
+#pragma once
 #include "SimInitializer.hpp"
 
 
@@ -11,6 +12,8 @@ public:
 	using Objects = SimInitializer<2, Particles>::Objects;
 
 	void Init(Particles& out, float h, Objects& obj) const override;
+
+	std::pair<coord<float, 2>, coord<float, 2>> GetDomain() const override;
 };
 
 template <ParticleSet<2> Particles>
@@ -49,6 +52,16 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 	this->BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.001);
 	//this->BuildCircle(out, coord<float, 2>{0.92, 0.255}, 0.05, 0.001);
 
-	//AddSink(obj, { 0.5, 0.2 }, { 0.7, 0.3 }, out, false);
-	//AddSource(obj, { 0.4, 0.6 }, { 0.5, 0.5 }, out, true, 0.5, 10, 100, 0.025);
+	this->AddSink(obj, { -10.0, 0.0 }, { 10.0, -10.0 }, out, false);
+	this->AddSink(obj, { -10.0, 1.0 }, { 10.0, 11.0 }, out, true);
+	this->AddSink(obj, { 0.0, -10.0 }, { -10.0, 10.0 }, out, false);
+	this->AddSink(obj, { 1.0, -10.0 }, { 11.0, 10.0 }, out, false);
+	// AddSource(obj, { 0.4, 0.6 }, { 0.5, 0.5 }, out, true, 0.5, 10, 100, 0.025);
+}
+
+
+template <ParticleSet<2> Particles>
+inline std::pair<coord<float, 2>, coord<float, 2>> BoxInitializer<2, Particles>::GetDomain() const
+{
+	return std::pair<coord<float, 2>, coord<float, 2>>{{ 0.0f, 0.0f }, { 1.0f, 1.0f }};
 }

@@ -243,7 +243,7 @@ inline void MortonSorting<D, Particles>::Find(idx_t i, std::vector<idx_t>& out)
 		u64 neighborCode = MortonCode(to<cell_upos_t>(neighbor - m_MinGrid));
 
 		// slower but safer when particles get out of bounds
-		// with dense lookup map we just ignore oob particles (TODO: shouldn't we exterminate them anyway? maybe with 4 infinite sinks around the domain)
+		// with dense lookup map we just ignore oob particles
 		/*
 		auto it = std::lower_bound(m_UniqueCells.begin(), m_UniqueCells.end(), neighborCode);
 		if (it != m_UniqueCells.end() && *it == neighborCode)

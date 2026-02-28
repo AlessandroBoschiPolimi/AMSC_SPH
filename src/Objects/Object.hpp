@@ -41,6 +41,7 @@ public:
 	using idx_t = Particle<3>::idx_t;
 
 	Object() = default;
+	virtual ~Object() = default;
 
 	virtual void Activate(const idx_t i) {};
 	virtual void OnFrameStart() {};

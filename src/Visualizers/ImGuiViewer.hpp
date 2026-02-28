@@ -24,8 +24,11 @@ public:
 	}
 	void Stop ()
 	{
-		if (m_Running.exchange(false))
+		if (m_ImguiThread.joinable())
+		{
+			m_Running = false;
 			m_ImguiThread.join();
+		}
 	}
 
 	/// Executes on the simulation thread
@@ -55,7 +58,6 @@ private:
 
 private:
 	Particles m_Particles;
-	//SPHSimulation<2>::grid_t m_Grid;
 
 	GLFWwindow* window = nullptr;
 	std::atomic<bool> m_Running = false;
@@ -75,6 +77,7 @@ private:
 	float m_SimTime = 0;
 	base::SPHProfiling m_SimProfiling;
 	base::SPHParams m_SimParams;
+	std::string m_SimName;
 
 	enum ColoringParam
 	{
