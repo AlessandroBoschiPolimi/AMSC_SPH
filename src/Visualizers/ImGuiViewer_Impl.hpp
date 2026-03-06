@@ -76,7 +76,13 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	//       this could be turned in a copy like
 	//       m_Sim->GetParticles().Populate(m_Particles)
 	//       which fills the particles efficiently (for SoA resize and populate all positions first, then velocity...)
-	m_Particles = this->m_Sim->GetParticles();
+	// TODO: copy only like 10%-1% of them for GPU simulations.
+
+	if (m_RequestNewParticles)
+	{
+		m_RequestNewParticles = true;
+		m_Particles = this->m_Sim->GetParticles();
+	}
 }
 template <ParticleSet<2> Particles>
 void ImGuiViewer<Particles>::OnStartFrame()
@@ -365,6 +371,8 @@ void ImGuiViewer<Particles>::Loop()
 
 			DrawStatsWindow();
 			DrawVisualizationWindow();
+
+			m_RequestNewParticles = true;
 		}
 
 		// Rendering

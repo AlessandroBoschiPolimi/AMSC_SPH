@@ -121,8 +121,12 @@ inline void SPHSimulation<D, Particles>::Step()
 	UpdateGhost();
 	if (mpi_rank == 0)
 		this->NotifyStartFrame();
-	m_Neighbors.clear();
-	m_Neighbors.resize(m_Particles_local.Size());
+
+	if (m_Neighbors.size() != m_Particles_local.Size())
+	{
+		m_Neighbors.clear();
+		m_Neighbors.resize(m_Particles_local.Size());
+	}
 	
 	{
 		stdc::time_point<stdclock> start;

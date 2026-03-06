@@ -1,5 +1,7 @@
 build/*
 
+launch.vs.json
+
 # Prerequisites
 *.d
 

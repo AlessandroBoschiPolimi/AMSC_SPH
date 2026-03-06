@@ -2,6 +2,7 @@
 #include "Test.hpp"
 
 #include "OpenMP/SPHSimulation.hpp"
+#include "CUDA/SPHSimulation.hpp"
 #include "Serial/SPHSimulation.hpp"
 
 #include "Visualizers/FileExporter.hpp"
@@ -12,6 +13,8 @@
 
 #include "OpenMP/Neighbors/SpatialHashing.hpp"
 #include "OpenMP/Neighbors/MortonSorting.hpp"
+
+#include "CUDA/Neighbors/SpatialHashing.hpp"
 
 #include "Serial/Neighbors/SpatialHashing.hpp"
 #include "Serial/Neighbors/MortonSorting.hpp"
@@ -42,6 +45,8 @@ int main(int argc, char** argv)
 
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();
+
+	GENERATE_TEST_CASE_VIEW(2, cuda, SpatialHashing, CudaParticles, BoxInitializer, "2D_CUDA_AoS_Hashing", base::SPHParams{});
 
 	// base::SPHParams params;
 	// params.FinalTime = params.TimeStep * 100;

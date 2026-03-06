@@ -488,7 +488,7 @@ struct ParticleSoA
 		out.resize(Xs.size());
 
 		for (size_t i = 0; i < Xs.size(); ++i)
-			out[i] = GetParticle(i);
+			out[i] = GetParticle(i); // TODO: improve, populating all positions first...
 	}
 
 	void SetParticle(size_t i, const Particle<D>& p)
@@ -806,3 +806,364 @@ template <>
 inline void ParticleAoS<2>::SetAccelerationPressureZ(size_t i, float acc) {}
 template <>
 inline void ParticleAoS<3>::SetAccelerationPressureZ(size_t i, float acc) { ParticlesVector[i].A_press.z = acc; }
+
+
+/// Calling Z component functions when D == 2 is undefined behaviour
+template <size_t D>
+struct ParticlesCuda
+{
+	using vec_t = typename Particle<D>::vec_t;
+	using idx_t = typename Particle<D>::idx_t;
+
+	size_t Count = 0;
+	float* Xs = nullptr, Ys = nullptr, Zs = nullptr;
+	float* VXs = nullptr, VYs = nullptr, VZs = nullptr;
+	float* AX_gravs = nullptr, AY_gravs = nullptr, AZ_gravs = nullptr;
+	float* AX_viscs = nullptr, AY_viscs = nullptr, AZ_viscs = nullptr;
+	float* AX_presss = nullptr, AY_presss = nullptr, AZ_presss = nullptr;
+	float* Masss = nullptr;
+	float* Densitys = nullptr;
+	float* Pressures = nullptr;
+	ParticleType* Types = nullptr;
+	float* BoundaryPsis = nullptr;
+
+
+	ParticlesCuda() = default;
+
+	// -------------------------------------------------
+	// Size / Memory
+	// -------------------------------------------------
+
+	size_t Size() const { return Count; }
+	bool Empty() const { return Count == 0; }
+	void Malloc(size_t n)
+	{
+		// TODO: malloc
+		cudaMalloc((void**)&Xs, n * sizeof(float));
+		cudaMalloc((void**)&Ys, n * sizeof(float));
+		if constexpr (D > 2) cudaMalloc((void**)&Zs, n * sizeof(float));
+
+		cudaMalloc((void**)&VXs, n * sizeof(float));
+		cudaMalloc((void**)&VYs, n * sizeof(float));
+		if constexpr (D > 2) cudaMalloc((void**)&VZs, n * sizeof(float));
+
+		cudaMalloc((void**)&AX_gravs, n * sizeof(float));
+		cudaMalloc((void**)&AY_gravs, n * sizeof(float));
+		if constexpr (D > 2) cudaMalloc((void**)&AZ_gravs, n * sizeof(float));
+
+		cudaMalloc((void**)&AX_viscs, n * sizeof(float));
+		cudaMalloc((void**)&AY_viscs, n * sizeof(float));
+		if constexpr (D > 2) cudaMalloc((void**)&AZ_viscs, n * sizeof(float));
+
+		cudaMalloc((void**)&AX_presss, n * sizeof(float));
+		cudaMalloc((void**)&AY_presss, n * sizeof(float));
+		if constexpr (D > 2) cudaMalloc((void**)&AZ_presss, n * sizeof(float));
+
+		cudaMalloc((void**)&Masss, n * sizeof(float));
+		cudaMalloc((void**)&Densitys, n * sizeof(float));
+		cudaMalloc((void**)&Pressures, n * sizeof(float));
+		cudaMalloc((void**)&Types, n * sizeof(ParticleType));
+		cudaMalloc((void**)&BoundaryPsis, n * sizeof(float));
+
+		Count = n;
+	}
+	void MemcpyTo(const ParticlesCuda& other)
+	{
+		// if we need to resize a non-empty vector malloc a new one then memcpy to it
+	}
+	template <ParticleSet<D> Particles>
+	void MemcpyTo(const Particles& other)
+	{
+		cudaMemcpy(Xs, other.Xs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(Ys, other.Ys, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		if constexpr (D > 2) cudaMemcpy(Zs, other.Zs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+
+		cudaMemcpy(VXs, other.VXs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(VYs, other.VYs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		if constexpr (D > 2) cudaMemcpy(VZs, other.VZs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+
+		cudaMemcpy(AX_gravs, other.AX_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(AY_gravs, other.AY_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		if constexpr (D > 2) cudaMemcpy(AZ_gravs, other.AZ_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+
+		cudaMemcpy(AX_presss, other.AX_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(AY_presss, other.AY_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		if constexpr (D > 2) cudaMemcpy(AZ_presss, other.AZ_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+
+		cudaMemcpy(AX_viscs, other.AX_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(AY_viscs, other.AY_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		if constexpr (D > 2) cudaMemcpy(AZ_viscs, other.AZ_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+
+		cudaMemcpy(Masss, other.Masss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(Densitys, other.Densitys, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(Pressures, other.Pressures, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(Types, other.Types, Count * sizeof(ParticleType), cudaMemcpyDeviceToHost);
+		cudaMemcpy(BoundaryPsis, other.BoundaryPsis, Count * sizeof(float), cudaMemcpyDeviceToHost);
+	}
+	void MemcpyFrom(const ParticleSoA<D>& other)
+	{
+		cudaMemcpy(other.Xs, Xs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.Ys, Ys, Count * sizeof(float), cudaMemcpyHostToDevice);
+		if constexpr (D > 2) cudaMemcpy(other.Zs, Zs, Count * sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaMemcpy(other.VXs, VXs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.VYs, VYs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		if constexpr (D > 2) cudaMemcpy(other.VZs, VZs, Count * sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaMemcpy(other.AX_gravs, AX_gravs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.AY_gravs, AY_gravs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		if constexpr (D > 2) cudaMemcpy(other.AZ_gravs, AZ_gravs, Count * sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaMemcpy(other.AX_presss, AX_presss, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.AY_presss, AY_presss, Count * sizeof(float), cudaMemcpyHostToDevice);
+		if constexpr (D > 2) cudaMemcpy(other.AZ_presss, AZ_presss, Count * sizeof(float), cudaMemcpyHostToDevice);
+		
+		cudaMemcpy(other.AX_viscs, AX_viscs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.AY_viscs, AY_viscs, Count * sizeof(float), cudaMemcpyHostToDevice);
+		if constexpr (D > 2) cudaMemcpy(other.AZ_viscs, AZ_viscs, Count * sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaMemcpy(other.Masss, Masss, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.Densitys, Densitys, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.Pressures, Pressures, Count * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.Types, Types, Count * sizeof(ParticleType), cudaMemcpyHostToDevice);
+		cudaMemcpy(other.BoundaryPsis, BoundaryPsis, Count * sizeof(float), cudaMemcpyHostToDevice);
+	}
+	void Free()
+	{
+		if (Empty()) return;
+
+		cudaFree(Xs); cudaFree(Ys); if constexpr (D > 2) cudaFree(Zs);
+		cudaFree(VXs); cudaFree(VYs); if constexpr (D > 2) cudaFree(VZs);
+		cudaFree(AX_gravs); cudaFree(AY_gravs); if constexpr (D > 2) cudaFree(AZ_gravs);
+		cudaFree(AX_viscs); cudaFree(AY_viscs); if constexpr (D > 2) cudaFree(AZ_viscs);
+		cudaFree(AX_presss); cudaFree(AY_presss); if constexpr (D > 2) cudaFree(AZ_presss);
+		cudaFree(Masss);
+		cudaFree(Densitys);
+		cudaFree(Pressures);
+		cudaFree(Types);
+		cudaFree(BoundaryPsis);
+	}
+
+	// -------------------------------------------------
+	// Conversion
+	// -------------------------------------------------
+	Particle<D> GetParticle(size_t i) const
+	{
+		Particle<D> p;
+
+		p.Position.x = Xs[i];
+		p.Position.y = Ys[i];
+		if constexpr (D > 2) p.Position.z = Zs[i];
+
+		p.Velocity.x = VXs[i];
+		p.Velocity.y = VYs[i];
+		if constexpr (D > 2) p.Velocity.z = VZs[i];
+
+		p.A_grav.x = AX_gravs[i];
+		p.A_grav.y = AY_gravs[i];
+		if constexpr (D > 2) p.A_grav.z = AZ_gravs[i];
+
+		p.A_visc.x = AX_viscs[i];
+		p.A_visc.y = AY_viscs[i];
+		if constexpr (D > 2) p.A_visc.z = AZ_viscs[i];
+
+		p.A_press.x = AX_presss[i];
+		p.A_press.y = AY_presss[i];
+		if constexpr (D > 2) p.A_press.z = AZ_presss[i];
+
+		p.Mass = Masss[i];
+		p.Density = Densitys[i];
+		p.Pressure = Pressures[i];
+		p.Type = Types[i];
+		p.BoundaryPsi = BoundaryPsis[i];
+
+		return p;
+	}
+	void GetParticles(std::vector<Particle<D>>& out) const {
+		out.clear();
+		out.resize(Xs.size());
+
+		for (size_t i = 0; i < Xs.size(); ++i)
+			out[i] = GetParticle(i);
+	}
+
+	void SetParticle(size_t i, const Particle<D>& p)
+	{
+		Xs[i] = p.Position.x;
+		Ys[i] = p.Position.y;
+		if constexpr (D > 2) Zs[i] = p.Position.z;
+
+		VXs[i] = p.Velocity.x;
+		VYs[i] = p.Velocity.y;
+		if constexpr (D > 2) VZs[i] = p.Velocity.z;
+
+		AX_gravs[i] = p.A_grav.x;
+		AY_gravs[i] = p.A_grav.y;
+		if constexpr (D > 2) AZ_gravs[i] = p.A_grav.z;
+
+		AX_viscs[i] = p.A_visc.x;
+		AY_viscs[i] = p.A_visc.y;
+		if constexpr (D > 2) AZ_viscs[i] = p.A_visc.z;
+
+		AX_presss[i] = p.A_press.x;
+		AY_presss[i] = p.A_press.y;
+		if constexpr (D > 2) AZ_presss[i] = p.A_press.z;
+
+		Masss[i] = p.Mass;
+		Densitys[i] = p.Density;
+		Pressures[i] = p.Pressure;
+		Types[i] = p.Type;
+		BoundaryPsis[i] = p.BoundaryPsi;
+	}
+	void SetParticle(size_t i, Particle<D>&& particle) {
+		SetParticle(i, particle);
+	}
+	void SetParticle(size_t i, const ParticlesCuda& other, size_t src) {
+		Xs[i] = other.Xs[src];
+		Ys[i] = other.Ys[src];
+		if constexpr (D > 2) Zs[i] = other.Zs[src];
+
+		VXs[i] = other.VXs[src];
+		VYs[i] = other.VYs[src];
+		if constexpr (D > 2) VZs[i] = other.VZs[src];
+
+		AX_gravs[i] = other.AX_gravs[src];
+		AY_gravs[i] = other.AY_gravs[src];
+		if constexpr (D > 2) AZ_gravs[i] = other.AZ_gravs[src];
+
+		AX_viscs[i] = other.AX_viscs[src];
+		AY_viscs[i] = other.AY_viscs[src];
+		if constexpr (D > 2) AZ_viscs[i] = other.AZ_viscs[src];
+
+		AX_presss[i] = other.AX_presss[src];
+		AY_presss[i] = other.AY_presss[src];
+		if constexpr (D > 2) AZ_presss[i] = other.AZ_presss[src];
+
+		Masss[i] = other.Masss[src];
+		Densitys[i] = other.Densitys[src];
+		Pressures[i] = other.Pressures[src];
+		Types[i] = other.Types[src];
+		BoundaryPsis[i] = other.BoundaryPsis[src];
+	}
+
+
+	// -------------------------------------------------
+	// Getters
+	// -------------------------------------------------
+
+	vec_t Position(size_t i) const {
+		vec_t v;
+		v.x = Xs[i];
+		v.y = Ys[i];
+		if constexpr (D > 2) v.z = Zs[i];
+		return v;
+	}
+	float PositionX(size_t i) const { return Xs[i]; }
+	float PositionY(size_t i) const { return Ys[i]; }
+	float PositionZ(size_t i) const { if constexpr (D > 2) return Zs[i]; else return 0.f; }
+
+	vec_t Velocity(size_t i) const {
+		vec_t v;
+		v.x = VXs[i];
+		v.y = VYs[i];
+		if constexpr (D > 2) v.z = VZs[i];
+		return v;
+	}
+	float VelocityX(size_t i) const { return VXs[i]; }
+	float VelocityY(size_t i) const { return VYs[i]; }
+	float VelocityZ(size_t i) const { if constexpr (D > 2) return VZs[i]; else return 0.f; }
+
+	vec_t AccelerationGravity(size_t i) const {
+		vec_t v;
+		v.x = AX_gravs[i];
+		v.y = AY_gravs[i];
+		if constexpr (D > 2) v.z = AZ_gravs[i];
+		return v;
+	}
+	float AccelerationGravityX(size_t i) const { return AX_gravs[i]; }
+	float AccelerationGravityY(size_t i) const { return AY_gravs[i]; }
+	float AccelerationGravityZ(size_t i) const { if constexpr (D > 2) return AZ_gravs[i]; else return 0.f; }
+
+	vec_t AccelerationViscosity(size_t i) const {
+		vec_t v;
+		v.x = AX_viscs[i];
+		v.y = AY_viscs[i];
+		if constexpr (D > 2) v.z = AZ_viscs[i];
+		return v;
+	}
+	float AccelerationViscosityX(size_t i) const { return AX_viscs[i]; }
+	float AccelerationViscosityY(size_t i) const { return AY_viscs[i]; }
+	float AccelerationViscosityZ(size_t i) const { if constexpr (D > 2) return AZ_viscs[i]; else return 0.f; }
+
+	vec_t AccelerationPressure(size_t i) const {
+		vec_t v;
+		v.x = AX_presss[i];
+		v.y = AY_presss[i];
+		if constexpr (D > 2) v.z = AZ_presss[i];
+		return v;
+	}
+	float AccelerationPressureX(size_t i) const { return AX_presss[i]; }
+	float AccelerationPressureY(size_t i) const { return AY_presss[i]; }
+	float AccelerationPressureZ(size_t i) const { if constexpr (D > 2) return AZ_presss[i]; else return 0.f; }
+
+	float Mass(size_t i) const { return Masss[i]; }
+	float Density(size_t i) const { return Densitys[i]; }
+	float Pressure(size_t i) const { return Pressures[i]; }
+	ParticleType Type(size_t i) const { return Types[i]; }
+	float BoundaryPsi(size_t i) const { return BoundaryPsis[i]; }
+
+	// -------------------------------------------------
+	// Setters
+	// -------------------------------------------------
+
+	void SetPosition(size_t i, const vec_t& p) {
+		Xs[i] = p.x;
+		Ys[i] = p.y;
+		if constexpr (D > 2) Zs[i] = p.z;
+	}
+	void SetPositionX(size_t i, float v) { Xs[i] = v; }
+	void SetPositionY(size_t i, float v) { Ys[i] = v; }
+	void SetPositionZ(size_t i, float v) { if constexpr (D > 2) Zs[i] = v; }
+
+	void SetVelocity(size_t i, const vec_t& v) {
+		VXs[i] = v.x;
+		VYs[i] = v.y;
+		if constexpr (D > 2) VZs[i] = v.z;
+	}
+	void SetVelocityX(size_t i, float v) { VXs[i] = v; }
+	void SetVelocityY(size_t i, float v) { VYs[i] = v; }
+	void SetVelocityZ(size_t i, float v) { if constexpr (D > 2) VZs[i] = v; }
+
+	void SetAccelerationGravity(size_t i, const vec_t& a) {
+		AX_gravs[i] = a.x;
+		AY_gravs[i] = a.y;
+		if constexpr (D > 2) AZ_gravs[i] = a.z;
+	}
+	void SetAccelerationGravityX(size_t i, float v) { AX_gravs[i] = v; }
+	void SetAccelerationGravityY(size_t i, float v) { AY_gravs[i] = v; }
+	void SetAccelerationGravityZ(size_t i, float v) { if constexpr (D > 2) AZ_gravs[i] = v; }
+
+	void SetAccelerationViscosity(size_t i, const vec_t& a) {
+		AX_viscs[i] = a.x;
+		AY_viscs[i] = a.y;
+		if constexpr (D > 2) AZ_viscs[i] = a.z;
+	}
+	void SetAccelerationViscosityX(size_t i, float v) { AX_viscs[i] = v; }
+	void SetAccelerationViscosityY(size_t i, float v) { AY_viscs[i] = v; }
+	void SetAccelerationViscosityZ(size_t i, float v) { if constexpr (D > 2) AZ_viscs[i] = v; }
+
+	void SetAccelerationPressure(size_t i, const vec_t& a) {
+		AX_presss[i] = a.x;
+		AY_presss[i] = a.y;
+		if constexpr (D > 2) AZ_presss[i] = a.z;
+	}
+	void SetAccelerationPressureX(size_t i, float v) { AX_presss[i] = v; }
+	void SetAccelerationPressureY(size_t i, float v) { AY_presss[i] = v; }
+	void SetAccelerationPressureZ(size_t i, float v) { if constexpr (D > 2) AZ_presss[i] = v; }
+
+	void SetMass(size_t i, float m) { Masss[i] = m; }
+	void SetDensity(size_t i, float d) { Densitys[i] = d; }
+	void SetPressure(size_t i, float p) { Pressures[i] = p; }
+	void SetType(size_t i, ParticleType t) { Types[i] = t; }
+	void SetBoundaryPsi(size_t i, float p) { BoundaryPsis[i] = p; }
+};
