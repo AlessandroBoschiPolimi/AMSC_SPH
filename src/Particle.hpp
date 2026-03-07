@@ -808,8 +808,15 @@ template <>
 inline void ParticleAoS<3>::SetAccelerationPressureZ(size_t i, float acc) { ParticlesVector[i].A_press.z = acc; }
 
 
+#ifdef HAS_CUDA
+#include <cuda_runtime.h>
+#include <thrust/sort.h>
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+#include <device_launch_parameters.h>
+#include <cuda.h>
 
-#include "cuda_runtime.h"
+#include "CUDA/Utils.cuh"
 
 /// Calling Z component functions when D == 2 is undefined behaviour
 template <size_t D>
@@ -875,35 +882,149 @@ struct ParticlesCuda
 		// if we need to resize a non-empty vector: malloc a new one then memcpy to it
 	}
 	template <ParticleSet<D> Particles>
-	void MemcpyTo(Particles& other) const
+	void MemcpyTo(Particles& other, u32 stride = 1) const
 	{
-		other.Resize(Count);
+		if (stride == 1)
+		{
+			other.Resize(Count);
 
-		cudaMemcpy(other.Xs.data(), Xs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.Ys.data(), Ys, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		if constexpr (D > 2) cudaMemcpy(other.Zs.data(), Zs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Xs.data(), Xs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Ys.data(), Ys, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2) cudaMemcpy(other.Zs.data(), Zs, Count * sizeof(float), cudaMemcpyDeviceToHost);
 
-		cudaMemcpy(other.VXs.data(), VXs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.VYs.data(), VYs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		if constexpr (D > 2) cudaMemcpy(other.VZs.data(), VZs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		
-		cudaMemcpy(other.AX_gravs.data(), AX_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.AY_gravs.data(), AY_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		if constexpr (D > 2) cudaMemcpy(other.AZ_gravs.data(), AZ_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.VXs.data(), VXs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.VYs.data(), VYs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2) cudaMemcpy(other.VZs.data(), VZs, Count * sizeof(float), cudaMemcpyDeviceToHost);
 
-		cudaMemcpy(other.AX_presss.data(), AX_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.AY_presss.data(), AY_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		if constexpr (D > 2) cudaMemcpy(other.AZ_presss.data(), AZ_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AX_gravs.data(), AX_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AY_gravs.data(), AY_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2) cudaMemcpy(other.AZ_gravs.data(), AZ_gravs, Count * sizeof(float), cudaMemcpyDeviceToHost);
 
-		cudaMemcpy(other.AX_viscs.data(), AX_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.AY_viscs.data(), AY_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		if constexpr (D > 2) cudaMemcpy(other.AZ_viscs.data(), AZ_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AX_presss.data(), AX_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AY_presss.data(), AY_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2) cudaMemcpy(other.AZ_presss.data(), AZ_presss, Count * sizeof(float), cudaMemcpyDeviceToHost);
 
-		cudaMemcpy(other.Masss.data(), Masss, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.Densitys.data(), Densitys, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.Pressures.data(), Pressures, Count * sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.Types.data(), Types, Count * sizeof(ParticleType), cudaMemcpyDeviceToHost);
-		cudaMemcpy(other.BoundaryPsis.data(), BoundaryPsis, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AX_viscs.data(), AX_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AY_viscs.data(), AY_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2) cudaMemcpy(other.AZ_viscs.data(), AZ_viscs, Count * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.Masss.data(), Masss, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Densitys.data(), Densitys, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Pressures.data(), Pressures, Count * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Types.data(), Types, Count * sizeof(ParticleType), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.BoundaryPsis.data(), BoundaryPsis, Count * sizeof(float), cudaMemcpyDeviceToHost);
+		}
+		else
+		{
+			u64 sample_size = (Count + stride - 1) / stride;
+
+			// Allocate temporary device buffers for sampled data
+			float* Xs_sample, * Ys_sample, * Zs_sample = nullptr;
+			float* VXs_sample, * VYs_sample, * VZs_sample = nullptr;
+
+			float* AX_gravs_sample, * AY_gravs_sample, * AZ_gravs_sample = nullptr;
+			float* AX_presss_sample, * AY_presss_sample, * AZ_presss_sample = nullptr;
+			float* AX_viscs_sample, * AY_viscs_sample, * AZ_viscs_sample = nullptr;
+
+			float* Masss_sample, * Densitys_sample, * Pressures_sample;
+			float* BoundaryPsis_sample;
+
+			ParticleType* Types_sample;
+
+			// position
+			cudaMalloc(&Xs_sample, sample_size * sizeof(float));
+			cudaMalloc(&Ys_sample, sample_size * sizeof(float));
+			if constexpr (D > 2)
+				cudaMalloc(&Zs_sample, sample_size * sizeof(float));
+
+			// velocity
+			cudaMalloc(&VXs_sample, sample_size * sizeof(float));
+			cudaMalloc(&VYs_sample, sample_size * sizeof(float));
+			if constexpr (D > 2)
+				cudaMalloc(&VZs_sample, sample_size * sizeof(float));
+
+			// gravity accel
+			cudaMalloc(&AX_gravs_sample, sample_size * sizeof(float));
+			cudaMalloc(&AY_gravs_sample, sample_size * sizeof(float));
+			if constexpr (D > 2)
+				cudaMalloc(&AZ_gravs_sample, sample_size * sizeof(float));
+
+			// pressure accel
+			cudaMalloc(&AX_presss_sample, sample_size * sizeof(float));
+			cudaMalloc(&AY_presss_sample, sample_size * sizeof(float));
+			if constexpr (D > 2)
+				cudaMalloc(&AZ_presss_sample, sample_size * sizeof(float));
+
+			// viscosity accel
+			cudaMalloc(&AX_viscs_sample, sample_size * sizeof(float));
+			cudaMalloc(&AY_viscs_sample, sample_size * sizeof(float));
+			if constexpr (D > 2)
+				cudaMalloc(&AZ_viscs_sample, sample_size * sizeof(float));
+
+			// scalar fields
+			cudaMalloc(&Masss_sample, sample_size * sizeof(float));
+			cudaMalloc(&Densitys_sample, sample_size * sizeof(float));
+			cudaMalloc(&Pressures_sample, sample_size * sizeof(float));
+			cudaMalloc(&Types_sample, sample_size * sizeof(ParticleType));
+			cudaMalloc(&BoundaryPsis_sample, sample_size * sizeof(float));
+
+
+			// Launch kernel
+			size_t block = 256;
+			size_t grid = (sample_size + block - 1) / block;
+
+			SampleStride(grid, block, sample_size, stride,
+				Xs, Ys, D > 2 ? Zs : nullptr,
+				VXs, VYs, D > 2 ? VZs : nullptr,
+				AX_gravs, AY_gravs, D > 2 ? AZ_gravs : nullptr,
+				AX_presss, AY_presss, D > 2 ? AZ_presss : nullptr,
+				AX_viscs, AY_viscs, D > 2 ? AZ_viscs : nullptr,
+				Masss, Densitys, Pressures,
+				(u8*)Types, BoundaryPsis,
+				Xs_sample, Ys_sample, D > 2 ? Zs_sample : nullptr,
+				VXs_sample, VYs_sample, D > 2 ? VZs_sample : nullptr,
+				AX_gravs_sample, AY_gravs_sample, D > 2 ? AZ_gravs_sample : nullptr,
+				AX_presss_sample, AY_presss_sample, D > 2 ? AZ_presss_sample : nullptr,
+				AX_viscs_sample, AY_viscs_sample, D > 2 ? AZ_viscs_sample : nullptr,
+				Masss_sample, Densitys_sample, Pressures_sample,
+				(u8*)Types_sample, BoundaryPsis_sample,
+				D > 2);
+
+			// Copy to CPU
+			other.Resize(sample_size);
+
+			cudaMemcpy(other.Xs.data(), Xs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Ys.data(), Ys_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2)
+				cudaMemcpy(other.Zs.data(), Zs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.VXs.data(), VXs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.VYs.data(), VYs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2)
+				cudaMemcpy(other.VZs.data(), VZs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.AX_gravs.data(), AX_gravs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AY_gravs.data(), AY_gravs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2)
+				cudaMemcpy(other.AZ_gravs.data(), AZ_gravs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.AX_presss.data(), AX_presss_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AY_presss.data(), AY_presss_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2)
+				cudaMemcpy(other.AZ_presss.data(), AZ_presss_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.AX_viscs.data(), AX_viscs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.AY_viscs.data(), AY_viscs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			if constexpr (D > 2)
+				cudaMemcpy(other.AZ_viscs.data(), AZ_viscs_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.Masss.data(), Masss_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Densitys.data(), Densitys_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.Pressures.data(), Pressures_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(other.BoundaryPsis.data(), BoundaryPsis_sample, sample_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(other.Types.data(), Types_sample, sample_size * sizeof(ParticleType), cudaMemcpyDeviceToHost);
+		}
 	}
 	void MemcpyFrom(const ParticleSoA<D>& other)
 	{
@@ -984,13 +1105,6 @@ struct ParticlesCuda
 
 		return p;
 	}
-	//void GetParticles(std::vector<Particle<D>>& out) const {
-	//	out.clear();
-	//	out.resize(Count);
-	//
-	//	for (size_t i = 0; i < Count; ++i)
-	//		out[i] = GetParticle(i);
-	//}
 
 	__device__ void DSetParticle(size_t i, const Particle<D>& p)
 	{
@@ -1172,3 +1286,4 @@ struct ParticlesCuda
 	__device__ void DSetType(size_t i, ParticleType t) { Types[i] = t; }
 	__device__ void DSetBoundaryPsi(size_t i, float p) { BoundaryPsis[i] = p; }
 };
+#endif

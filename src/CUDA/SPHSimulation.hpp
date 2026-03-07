@@ -1,58 +1,103 @@
-#include "Neighbors/NeighborFinder.cuh"
-#include "Base/SPHSimulation.hpp"
+#pragma once
+#ifdef HAS_CUDA
+
+#include "Utility.hpp"
+#include "Visualizers/CudaObserver.hpp"
+#include "Base/SPHParams.hpp"
+#include "Initializers/SimInitializer.hpp"
 
 #include "Neighbors/SpatialHashing.cuh"
 
-#include "Utility.hpp"
-#include <mutex>
-
 #include "SPHSimulationKernels.cuh"
+
+#include <mutex>
 
 
 namespace cudasph
 {
 
-template <size_t D, ParticleSet<D> Particles = ParticleSoA<D>>
-class SPHSimulation : public base::SPHSimulation<D, Particles>
+template <size_t D>
+class SPHSimulation
 {
 public:
 	using idx_t = Particle<D>::idx_t;
 	using vec_t = Particle<D>::vec_t;
 
+	using Particles = ParticleSoA<D>;
 
 	SPHSimulation();
-	virtual ~SPHSimulation() override {}
+	~SPHSimulation() {}
 
-	void Start() override;
+	void Start();
 
+	Particles& GetParticles(u32 stride);
 
-	const Particles& GetParticles() const override;
-	Particles& GetParticles() override;
-	const std::vector<std::vector<idx_t>>& GetNeighbors() const override;
-	std::vector<std::vector<idx_t>>& GetNeighbors() override;
-
-	void InitializeFluid(const SimInitializer<D, Particles>* init) override;
+	void InitializeFluid(const SimInitializer<D, Particles>* init);
 
 
-protected:
-	void Step() override;
+	void AddObserver(CudaObserver<D>* obs) {
+		obs->Attach(this);
+		m_Observers.push_back(obs);
+	}
+
+
+public:
+	void SetName(const std::string& name) { m_Name = name; }
+	std::string GetName() const { return m_Name; }
+
+	void SetParams(const base::SPHParams& params) { m_Params = params; }
+	void SetRestDensity(float val) { m_Params.RestDensity = val; }
+	void SetStiffness(float val) { m_Params.Stiffness = val; }
+	void SetViscosity(float val) { m_Params.Viscosity = val; }
+	void SetTimeStep(float val) { m_Params.TimeStep = val; }
+	void SetSmoothingLength(float val) { m_Params.SmoothingLength = val; }
+	void SetFinalTime(float val) { m_Params.FinalTime = val; }
+	base::SPHParams GetParams() const { return m_Params; }
+	float GetRestDensity() const { return m_Params.RestDensity; }
+	float GetStiffness() const { return m_Params.Stiffness; }
+	float GetViscosity() const { return m_Params.Viscosity; }
+	float GetTimeStep() const { return m_Params.TimeStep; }
+	float GetSmoothingLength() const { return m_Params.SmoothingLength; }
+	float GetFinalTime() const { return m_Params.FinalTime; }
+
+	float GetTime()  const { return m_Time; }
+	u64   GetFrame() const { return m_Frame; }
+	base::SPHProfiling GetProfiling();
 
 private:
-	mutable Particles m_HParticles;
+	void Step();
+
+	void NotifyStartFrame() {
+		for (auto* o : m_Observers)
+			o->OnStartFrame();
+	}
+	void NotifyEndFrame() {
+		for (auto* o : m_Observers)
+			o->OnEndFrame();
+	}
+
+private:
+	base::SPHParams m_Params;
+
+	Particles m_HParticles;
 	ParticlesCuda<D> m_DParticles;
-
-	base::SPHProfiling* m_DProfiling;
-
-	std::vector<std::vector<idx_t>> m_HNeighbors_UNUSED;
-
+	
 	bool m_Running = false;
+	u64 m_Frame = 0;
+	float m_Time = 0.0f;
 
-	mutable std::mutex m_Mutex;
+	base::SPHProfiling m_Profiling;
+	base::SPHProfiling* m_DProfiling;
+	std::vector<CudaObserver<D>*> m_Observers;
+	std::string m_Name = "Simulation";
+
+	std::mutex m_Mutex;
+	size_t m_ParticleCount = 0;
 };
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::Start()
+template <size_t D>
+inline void SPHSimulation<D>::Start()
 {
 	std::cout << "Start!\n";
 
@@ -71,7 +116,7 @@ inline void SPHSimulation<D, Particles>::Start()
 		m_Running = true;
 	}
 
-	while (this->m_Time < this->m_Params.FinalTime)
+	while (m_Time < m_Params.FinalTime)
 		Step();
 
 	{
@@ -85,75 +130,65 @@ inline void SPHSimulation<D, Particles>::Start()
 	}
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::Step()
+template <size_t D>
+inline void SPHSimulation<D>::Step()
 {
 	// NOTE: stepping 1 frame at a time from outside is kinda meaningless, so the UI should just allow pausing and 
 	// incrementing FinalTime by a multiple of TimeStep, then resume it; perhaps by adding another param
 	// like "Paused" which does std::sleep_for(100ms) in the loop in Start
 	// (Pausing the simulation should free the GPU memory)
 
-	this->NotifyStartFrame();
+	NotifyStartFrame();
 
 	cudaError_t cudaStatus;
 
-	RunStepKernel(m_HParticles.Size(), this->m_Params, m_DProfiling, m_DParticles);
+	RunStepKernel(m_ParticleCount, m_Params, m_DProfiling, m_DParticles);
 
 	cudaStatus = cudaGetLastError();
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "StepKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-		this->m_Time += this->m_Params.FinalTime;
+		m_Time += m_Params.FinalTime;
 	}
 
-	this->m_Time += this->m_Params.TimeStep;
-	this->m_Frame++;
+	m_Time += m_Params.TimeStep;
+	m_Frame++;
 
-	this->NotifyEndFrame();
+	NotifyEndFrame();
 }
 
 
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline SPHSimulation<D, Particles>::SPHSimulation()
-	: base::SPHSimulation<D, Particles>()
+template <size_t D>
+inline SPHSimulation<D>::SPHSimulation()
 {
 }
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline Particles& SPHSimulation<D, Particles>::GetParticles()
-{
-	std::lock_guard<std::mutex> lock(m_Mutex);
-	m_DParticles.MemcpyTo<ParticleSoA<D>>(m_HParticles);
-	cudaMemcpy((void*)&this->m_Profiling, m_DProfiling, sizeof(base::SPHProfiling), cudaMemcpyDeviceToHost);
-	return m_HParticles;
-}
-template <size_t D, ParticleSet<D> Particles>
-inline const Particles& SPHSimulation<D, Particles>::GetParticles() const
+template <size_t D>
+inline SPHSimulation<D>::Particles& SPHSimulation<D>::GetParticles(u32 stride)
 {
 	std::lock_guard<std::mutex> lock(m_Mutex);
-	m_DParticles.MemcpyTo<ParticleSoA<D>>(m_HParticles);
-	cudaMemcpy((void*)&this->m_Profiling, m_DProfiling, sizeof(base::SPHProfiling), cudaMemcpyDeviceToHost);
+	m_DParticles.MemcpyTo<ParticleSoA<D>>(m_HParticles, stride);
 	return m_HParticles;
 }
-template <size_t D, ParticleSet<D> Particles>
-inline std::vector<std::vector<typename SPHSimulation<D, Particles>::idx_t>>& SPHSimulation<D, Particles>::GetNeighbors()
+template <size_t D>
+inline base::SPHProfiling SPHSimulation<D>::GetProfiling()
 {
-	return m_HNeighbors_UNUSED;
-}
-template <size_t D, ParticleSet<D> Particles>
-inline const std::vector<std::vector<typename SPHSimulation<D, Particles>::idx_t>>& SPHSimulation<D, Particles>::GetNeighbors() const
-{
-	return m_HNeighbors_UNUSED;
+	cudaMemcpy((void*)&m_Profiling, m_DProfiling, sizeof(base::SPHProfiling), cudaMemcpyDeviceToHost);
+	return m_Profiling;
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::InitializeFluid(const SimInitializer<D, Particles>* init)
+template <size_t D>
+inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D, Particles>* init)
 {
-	std::cout << "Initializing " << this->m_Name << '\n';
-	init->Init(m_HParticles, this->m_Params.SmoothingLength, this->m_Objects);
-	std::cout << "Particles: " << m_HParticles.Size() << '\n';
+	std::cout << "Initializing " << m_Name << '\n';
+	std::vector<uptr<Object<2, Particles>>> tmp;
+	init->Init(m_HParticles, m_Params.SmoothingLength, tmp);
+	m_ParticleCount = m_HParticles.Size();
+	std::cout << "Particles: " << m_ParticleCount << '\n';
 }
 
 }
+
+#endif

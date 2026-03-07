@@ -1,4 +1,5 @@
 #pragma once
+#ifdef HAS_CUDA
 //#include "NeighborFinder.cuh"
 #include <cuda_runtime.h>
 #include <thrust/sort.h>
@@ -42,26 +43,7 @@ struct NeighborGrid
 void initNeighborGrid(
 	NeighborGrid& grid,
 	int numParticles,
-	int3 gridSize)
-{
-	grid.numParticles = numParticles;
-
-	grid.grid.gridSize = gridSize;
-	grid.grid.numCells = gridSize.x * gridSize.y * gridSize.z;
-
-	cudaMalloc(&grid.particleHash, numParticles * sizeof(int));
-	cudaMalloc(&grid.particleIndex, numParticles * sizeof(int));
-
-	cudaMalloc(&grid.cellStart, grid.grid.numCells * sizeof(int));
-	cudaMalloc(&grid.cellEnd, grid.grid.numCells * sizeof(int));
-
-	cudaMalloc(&grid.sortedXs, numParticles * sizeof(float));
-	cudaMalloc(&grid.sortedYs, numParticles * sizeof(float));
-	cudaMalloc(&grid.sortedZs, numParticles * sizeof(float));
-	cudaMalloc(&grid.sortedVXs, numParticles * sizeof(float));
-	cudaMalloc(&grid.sortedVYs, numParticles * sizeof(float));
-	cudaMalloc(&grid.sortedVZs, numParticles * sizeof(float));
-}
+	int3 gridSize);
 
 __global__ void computeHashKernel(
 	int n,
@@ -93,3 +75,4 @@ void buildNeighborGrid(
 	float3* vel);
 
 }
+#endif

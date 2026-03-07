@@ -1,13 +1,14 @@
 #pragma once
+#ifdef HAS_CUDA
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cuda.h>
 
-#include "Base/SPHSimulation.hpp"
-#include "Neighbors/NeighborFinder.cuh"
+#include "Base/SPHParams.hpp"
 #include "Neighbors/SpatialHashing.cuh"
 
 #include "Particle.hpp"
+
 
 namespace cudasph
 {
@@ -24,7 +25,7 @@ namespace cudasph
 	__global__ void StepKernel(base::SPHParams params, base::SPHProfiling* dProfiling, ParticlesCuda<D> dParticles)
 	{
 		int i = blockIdx.x * blockDim.x + threadIdx.x;
-		dParticles.DSetPositionY(i, dParticles.DPositionY(i) + 0.001);
+		dParticles.DSetPositionY(i, dParticles.DPositionY(i) + 0.00001);
 
 		return;
 	}
@@ -32,3 +33,4 @@ namespace cudasph
 	void RunStepKernel(size_t size, base::SPHParams params, base::SPHProfiling* dProfiling, ParticlesCuda<2> dParticles);
 	void RunStepKernel(size_t size, base::SPHParams params, base::SPHProfiling* dProfiling, ParticlesCuda<3> dParticles);
 }
+#endif

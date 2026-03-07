@@ -1,3 +1,5 @@
+#ifdef HAS_CUDA
+#include "CudaImGuiViewer.hpp"
 #include <format>
 
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
@@ -33,10 +35,10 @@ static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos,
 static Particle<2>::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 
 
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::Attach(base::SPHSimulation<2, Particles>* sim)
+
+void CudaImGuiViewer::Attach(cudasph::SPHSimulation<2>* sim)
 {
-	Observer<2, Particles>::Attach(sim);
+	CudaObserver<2>::Attach(sim);
 
 	if (sim != nullptr)
 	{
@@ -44,8 +46,8 @@ void ImGuiViewer<Particles>::Attach(base::SPHSimulation<2, Particles>* sim)
 		m_SimName = sim->GetName();
 	}
 }
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::OnEndFrame()
+
+void CudaImGuiViewer::OnEndFrame()
 {
 	if (this->m_Sim == nullptr)
 		return;
@@ -66,7 +68,6 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	if (m_Changed)
 	{
 		this->m_Sim->SetParams(m_SimParams);
-		this->m_Sim->ApplyCommand(m_Cmd);
 		m_Changed = false;
 	}
 
@@ -81,11 +82,11 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	if (m_RequestNewParticles)
 	{
 		m_RequestNewParticles = false;
-		m_Particles = this->m_Sim->GetParticles();
+		m_Particles = this->m_Sim->GetParticles(m_Stride);
 	}
 }
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::OnStartFrame()
+
+void CudaImGuiViewer::OnStartFrame()
 {
 	std::lock_guard<std::mutex> lock(m_Mutex);
 	if (this->m_Sim == nullptr)
@@ -102,8 +103,8 @@ void ImGuiViewer<Particles>::OnStartFrame()
 
 
 
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::DrawStatsWindow()
+
+void CudaImGuiViewer::DrawStatsWindow()
 {
 #ifdef IMGUI_HAS_DOCK
 	ImGui::SetNextWindowDockID(m_DockIDLeft, ImGuiCond_Appearing);
@@ -120,11 +121,21 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 		m_Changed |= ImGui::SliderFloat("Timestep", &m_SimParams.TimeStep, 0.0000f, 0.001f, "%.7f");
 		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength, 0.0001f, 0.5f, "%.7f");
 		m_Changed |= ImGui::SliderFloat("Final Time", &m_SimParams.FinalTime, 0.0f, 100.0f, "%.2f");
+		m_Changed |= ImGui::SliderInt("Sample Stride", &m_Stride, 1, 1000);
 	}
 
 	ImGui::Separator();
 	{
-		ImGui::Text("Particles: %ld", m_Particles.Size());
+		ImGui::Text("Particles: %ld", m_Particles.Size() * m_Stride);
+		ImGui::SameLine();
+		ImGui::TextDisabled("(?)");
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+			ImGui::TextUnformatted("The data is sampled 1 every \"Stride\" elements, so this number gets rounded");
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
 		ImGui::Text("UI / SPH (True) FPS: %.1f %.1f (%.1f)", ImGui::GetIO().Framerate, m_SimFPS, m_SimTrueFPS);
 
 		{
@@ -163,10 +174,6 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 		ImGui::Text("Position: %.3f %.3f", m_Particles.PositionX(0), m_Particles.PositionY(0));
 		ImGui::Text("Velocity: %.3f %.3f", m_Particles.VelocityX(0), m_Particles.VelocityY(0));
 	}
-	if (m_Cmd.Type != Command<2>::NONE)
-		ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
-	else
-		ImGui::Text("Command: NONE");
 
 	ImGui::Separator();
 	{
@@ -190,8 +197,8 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 
 	ImGui::End();
 }
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::DrawVisualizationWindow()
+
+void CudaImGuiViewer::DrawVisualizationWindow()
 {
 #ifdef IMGUI_HAS_DOCK
 	ImGui::SetNextWindowDockID(m_DockIDCenter, ImGuiCond_Appearing);
@@ -200,25 +207,6 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 
 	ImVec2 canvasPos  = ImGui::GetCursorScreenPos();
 	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-
-
-	// Click
-	ImVec2 mousePos = ImGui::GetMousePos();
-	vec_t worldPos  = ScreenToWorld(mousePos, canvasPos, canvasSize);
-
-	if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0)
-	{
-		m_Cmd.Type = Command<2>::PRESSURE;
-		m_Cmd.Position = worldPos;
-		m_Cmd.Radius = 0.1;
-		m_Cmd.Strength = 20000;
-		m_Changed = true;
-	}
-	else if (m_Cmd.Type != Command<2>::NONE)
-	{
-		m_Cmd.Type = Command<2>::NONE;
-		m_Changed = true;
-	}
 
 	// Draw
 	ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -281,16 +269,16 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 	ImGui::End();
 }
 
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::BeginFullscreenDockspace()
+
+void CudaImGuiViewer::BeginFullscreenDockspace()
 {
 #ifdef IMGUI_HAS_DOCK
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::DockSpaceOverViewport(m_DockspaceID, viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 #endif
 }
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::BuildInitialLayout()
+
+void CudaImGuiViewer::BuildInitialLayout()
 {
 #ifdef IMGUI_HAS_DOCK
 	static bool first_time = true;
@@ -329,8 +317,8 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::Loop()
+
+void CudaImGuiViewer::Loop()
 {
 	if (!Init())
 	{
@@ -392,8 +380,8 @@ void ImGuiViewer<Particles>::Loop()
 }
 
 
-template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::Deinit()
+
+void CudaImGuiViewer::Deinit()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -402,8 +390,8 @@ void ImGuiViewer<Particles>::Deinit()
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }
-template <ParticleSet<2> Particles>
-bool ImGuiViewer<Particles>::Init()
+
+bool CudaImGuiViewer::Init()
 {
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
@@ -492,3 +480,4 @@ bool ImGuiViewer<Particles>::Init()
 
 	return true;
 }
+#endif

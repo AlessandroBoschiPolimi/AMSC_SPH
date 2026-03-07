@@ -7,6 +7,7 @@
 
 #include "Visualizers/FileExporter.hpp"
 #include "Visualizers/ImGuiViewer.hpp"
+#include "Visualizers/CudaImGuiViewer.hpp"
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
@@ -19,23 +20,13 @@
 
 #include <cstring>
 
-#include "CUDA/Test.cuh"
-
-
-#define SIZE 2
 
 void ParseArgs(int argc, char** argv);
 
+void TestCuda();
 
-// Main code
 int main(int argc, char** argv)
 {
-#ifdef HAS_CUDA
-	Test();
-#else
-	std::cout << "NO CUDA\n";
-#endif
-
 	ParseArgs(argc, argv);
 	
 	// omp_set_num_threads(8);
@@ -44,6 +35,22 @@ int main(int argc, char** argv)
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();
 
+	// base::SPHParams params;
+	// params.FinalTime = params.TimeStep * 100;
+
+	// GENERATE_TEST_CASE_PARAVIEW(2, openmp, MortonSorting, ParticleAoS, "Correctness/AoS_OMP_Morton", BoxInitializer, "AoS_OMP_Morton", params);
+	// GENERATE_TEST_CASE_PARAVIEW(2, openmp, MortonSorting, ParticleSoA, "Correctness/SoA_OMP_Morton", BoxInitializer, "SoA_OMP_Morton", params);
+
+	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+
+	TestCuda();
+
+	return 0;
+}
+
+void TestCuda()
+{
+#ifdef HAS_CUDA
 	using Particles = ParticleSoA<2>;
 	BoxInitializer<2, Particles> init;
 
@@ -52,21 +59,14 @@ int main(int argc, char** argv)
 	sph.SetParams(base::SPHParams{});
 	sph.InitializeFluid(&init);
 
-	ImGuiViewer<Particles> viewer;
+	CudaImGuiViewer viewer;
 	sph.AddObserver(&viewer);
 	viewer.Start();
 
 	sph.Start();
-
-	// base::SPHParams params;
-	// params.FinalTime = params.TimeStep * 100;
-
-	// GENERATE_TEST_CASE_PARAVIEW(2, openmp, MortonSorting, ParticleAoS, "Correctness/AoS_OMP_Morton", BoxInitializer, "AoS_OMP_Morton", params);
-	// GENERATE_TEST_CASE_PARAVIEW(2, openmp, MortonSorting, ParticleSoA, "Correctness/SoA_OMP_Morton", BoxInitializer, "SoA_OMP_Morton", params);
-
-	//GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
-
-	return 0;
+#else
+	std::cout << "NO CUDA\n";
+#endif
 }
 
 
