@@ -45,7 +45,7 @@ if (ENABLE_CUDA)
 
         set(HAS_CUDA TRUE)
 
-        set(CMAKE_CUDA_STANDARD 17)
+        set(CMAKE_CUDA_STANDARD 20)
         set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
         # Set architecture manually (REQUIRED to avoid auto-detect)
@@ -181,6 +181,15 @@ elseif (WIN32)
     target_link_libraries(${PROJECT_NAME}_MPI
         opengl32
     )
+
+    add_compile_definitions(NOMINMAX)
+
+    if (MSVC AND HAS_CUDA)
+        target_compile_options(${PROJECT_NAME} PRIVATE
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>
+            $<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>
+        )
+    endif()
 else ()
     find_package(OpenGL REQUIRED)
     find_package(X11 REQUIRED)

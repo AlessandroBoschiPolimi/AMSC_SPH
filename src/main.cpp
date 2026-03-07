@@ -14,8 +14,6 @@
 #include "OpenMP/Neighbors/SpatialHashing.hpp"
 #include "OpenMP/Neighbors/MortonSorting.hpp"
 
-#include "CUDA/Neighbors/SpatialHashing.hpp"
-
 #include "Serial/Neighbors/SpatialHashing.hpp"
 #include "Serial/Neighbors/MortonSorting.hpp"
 
@@ -46,7 +44,19 @@ int main(int argc, char** argv)
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();
 
-	GENERATE_TEST_CASE_VIEW(2, cuda, SpatialHashing, CudaParticles, BoxInitializer, "2D_CUDA_AoS_Hashing", base::SPHParams{});
+	using Particles = ParticleSoA<2>;
+	BoxInitializer<2, Particles> init;
+
+	cudasph::SPHSimulation<2> sph;
+	sph.SetName("CUDA");
+	sph.SetParams(base::SPHParams{});
+	sph.InitializeFluid(&init);
+
+	ImGuiViewer<Particles> viewer;
+	sph.AddObserver(&viewer);
+	viewer.Start();
+
+	sph.Start();
 
 	// base::SPHParams params;
 	// params.FinalTime = params.TimeStep * 100;
@@ -54,7 +64,7 @@ int main(int argc, char** argv)
 	// GENERATE_TEST_CASE_PARAVIEW(2, openmp, MortonSorting, ParticleAoS, "Correctness/AoS_OMP_Morton", BoxInitializer, "AoS_OMP_Morton", params);
 	// GENERATE_TEST_CASE_PARAVIEW(2, openmp, MortonSorting, ParticleSoA, "Correctness/SoA_OMP_Morton", BoxInitializer, "SoA_OMP_Morton", params);
 
-	GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+	//GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
 
 	return 0;
 }
