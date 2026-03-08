@@ -1,6 +1,6 @@
 #pragma once
 #include "Base/Neighbors/NeighborFinder.hpp"
-
+#include <omp.h>
 
 namespace openmp
 {

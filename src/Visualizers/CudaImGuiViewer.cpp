@@ -111,7 +111,7 @@ void CudaImGuiViewer::DrawStatsWindow()
 #endif
 	ImGui::Begin("SPH Stats");
 
-	ImGui::Text(m_SimName.c_str());
+	ImGui::TextUnformatted(m_SimName.c_str());
 
 	ImGui::Separator();
 	{
@@ -162,7 +162,7 @@ void CudaImGuiViewer::DrawStatsWindow()
 
 				ImGui::BeginTooltip();
 				std::string label = std::format("{}: {:.1f}%%", labels[hovering], parts[hovering] / sum * 100);
-				ImGui::Text(label.c_str());
+				ImGui::TextUnformatted(label.c_str());
 				ImGui::EndTooltip();
 			}
 		}

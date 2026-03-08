@@ -84,7 +84,7 @@ consumer<FileExporter<D, Particles>*> GenerateTest_View(const std::string& path,
 #define GENERATE_FILE_EXPORTER_TYPE(s, particles) FileExporter<s, particles<s>>
 #define GENERATE_TEST_NF(s, ns, nf, particles) \
 	[](const SimInitializer<s, particles<s>>* i) -> ns::nf<s, particles<s>> \
-	{ return GenerateTest_##ns##_##nf##<s, particles<s>>(i); }
+	{ return GenerateTest_##ns##_##nf<s, particles<s>>(i); }
 
 /// use to launch a visualization 
 #define GENERATE_TEST_CASE_VIEW(s, ns, nf, particles, init, name, params) \
