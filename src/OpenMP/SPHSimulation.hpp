@@ -254,10 +254,11 @@ inline void SPHSimulation<D, Particles>::ComputeBoundaryPsi(idx_t i)
 	 * to implement collisions
 	 */
 	float V = 0;
+	auto pi = m_Particles.Position(i);
 	for (auto& j : m_Neighbors[i])
 	{
 		if (m_Particles.Type(j) == SOLID)
-			V += W_Ker.GetValue(m_Particles.Position(i), m_Particles.Position(j));
+			V += W_Ker.GetValue(pi, m_Particles.Position(j));
 	}
 	// Clamp the values in case the volume is too small
 	m_Particles.SetBoundaryPsi(i, (V > 1.0f) ? this->m_Params.RestDensity / V : 0);
@@ -314,7 +315,12 @@ inline void SPHSimulation<D, Particles>::ComputeAccelerationViscosity(idx_t i)
 	auto di = m_Particles.Density(i);
 
 	float sl2 = this->m_Params.SmoothingLength * this->m_Params.SmoothingLength;
-	vec_t acc = vec_t{ 0, 0 };
+	vec_t acc;
+	if constexpr (D == 2)
+		acc = vec_t{ 0, 0 };
+	else
+		acc = vec_t{ 0, 0, 0 }; // TODO: check that this initialization is correct also in the other impls
+
 
 	for (auto& j : m_Neighbors[i])
 	{
@@ -353,7 +359,12 @@ inline void SPHSimulation<D, Particles>::ComputeAccelerationPressure(idx_t i)
 	auto di = m_Particles.Density(i);
 	auto ddi = di * di;
 
-	vec_t acc = vec_t{ 0, 0 };
+	vec_t acc;
+	if constexpr (D == 2)
+		acc = vec_t{ 0, 0 };
+	else
+		acc = vec_t{ 0, 0, 0 }; // TODO: check that this initialization is correct also in the other impls
+
 
 	for (auto& j : m_Neighbors[i])
 	{

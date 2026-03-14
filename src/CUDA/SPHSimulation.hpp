@@ -17,6 +17,15 @@ namespace cudasph
 {
 
 template <size_t D>
+struct SpatialHashingStorage;
+
+template <>
+struct SpatialHashingStorage<2> { Grid2 Grid; };
+template <>
+struct SpatialHashingStorage<3> { Grid3 Grid; };
+
+
+template <size_t D>
 class SPHSimulation
 {
 public:
@@ -87,12 +96,16 @@ private:
 	float m_Time = 0.0f;
 
 	base::SPHProfiling m_Profiling;
-	base::SPHProfiling* m_DProfiling;
+	//base::SPHProfiling* m_DProfiling;
 	std::vector<CudaObserver<D>*> m_Observers;
 	std::string m_Name = "Simulation";
 
 	std::mutex m_Mutex;
 	size_t m_ParticleCount = 0;
+
+	//NeighborGrid grid;
+	SpatialHashingStorage<D> m_Grid;
+	GridGPU m_GridGPU;
 };
 
 
@@ -104,12 +117,27 @@ inline void SPHSimulation<D>::Start()
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 		// TODO: send m_Particles to the GPU
-		size_t N = m_HParticles.Size();
+		size_t N = m_ParticleCount;
 		m_DParticles.Malloc(N);
 		m_DParticles.MemcpyFrom(m_HParticles);
 
-		cudaMalloc((void**)&m_DProfiling, sizeof(base::SPHProfiling));
-		cudaMemset(m_DProfiling, 0, sizeof(base::SPHProfiling));
+		if constexpr (D == 2)
+		{
+			float2 minBound = make_float2(-0.2, -0.2);
+			float2 maxBound = make_float2(1.2, 1.2);
+			m_Grid.Grid.init(minBound, maxBound, m_Params.SmoothingLength);
+		}
+		else
+		{
+			float3 minBound = make_float3(-0.2, -0.2, -0.2);
+			float3 maxBound = make_float3(1.2, 1.2, 1.2);
+			m_Grid.Grid.init(minBound, maxBound, m_Params.SmoothingLength);
+		}
+
+		mallocGridGPU(m_GridGPU, N, m_Grid.Grid.totalCells);
+
+		//cudaMalloc((void**)&m_DProfiling, sizeof(base::SPHProfiling));
+		//cudaMemset(m_DProfiling, 0, sizeof(base::SPHProfiling));
 
 		// initNeighborGrid();
 
@@ -126,7 +154,8 @@ inline void SPHSimulation<D>::Start()
 		// TODO: free GPU
 		m_DParticles.MemcpyTo(m_HParticles);
 		m_DParticles.Free();
-		cudaFree(m_DProfiling);
+		freeGridGPU(m_GridGPU);
+		//cudaFree(m_DProfiling);
 	}
 }
 
@@ -142,7 +171,7 @@ inline void SPHSimulation<D>::Step()
 
 	cudaError_t cudaStatus;
 
-	RunStepKernel(m_ParticleCount, m_Params, m_DProfiling, m_DParticles);
+	RunStepKernels(m_Frame, m_Params, m_DParticles, m_Profiling, m_Grid.Grid, m_GridGPU);
 
 	cudaStatus = cudaGetLastError();
 	if (cudaStatus != cudaSuccess) {
@@ -169,13 +198,14 @@ template <size_t D>
 inline SPHSimulation<D>::Particles& SPHSimulation<D>::GetParticles(u32 stride)
 {
 	std::lock_guard<std::mutex> lock(m_Mutex);
+	std::cout << "CCC\n";
 	m_DParticles.MemcpyTo<ParticleSoA<D>>(m_HParticles, stride);
 	return m_HParticles;
 }
 template <size_t D>
 inline base::SPHProfiling SPHSimulation<D>::GetProfiling()
 {
-	cudaMemcpy((void*)&m_Profiling, m_DProfiling, sizeof(base::SPHProfiling), cudaMemcpyDeviceToHost);
+	//cudaMemcpy((void*)&m_Profiling, m_DProfiling, sizeof(base::SPHProfiling), cudaMemcpyDeviceToHost);
 	return m_Profiling;
 }
 

@@ -52,6 +52,8 @@ void CudaImGuiViewer::OnEndFrame()
 	if (this->m_Sim == nullptr)
 		return;
 
+	std::cout << "AAA\n";
+
 	m_SimTimeCounter += stdclock::now() - m_SimFrameStart;
 	m_SimFramesCounter++;
 	if (m_SimTimeCounter > 500ms)
@@ -84,6 +86,8 @@ void CudaImGuiViewer::OnEndFrame()
 		m_RequestNewParticles = false;
 		m_Particles = this->m_Sim->GetParticles(m_Stride);
 	}
+
+	std::cout << "BBB\n";
 }
 
 void CudaImGuiViewer::OnStartFrame()

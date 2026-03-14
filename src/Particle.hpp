@@ -884,7 +884,7 @@ struct ParticlesCuda
 	template <ParticleSet<D> Particles>
 	void MemcpyTo(Particles& other, u32 stride = 1) const
 	{
-		if (stride == 1)
+		if (stride == 1 || true)
 		{
 			other.Resize(Count);
 
@@ -973,7 +973,7 @@ struct ParticlesCuda
 			size_t block = 256;
 			size_t grid = (sample_size + block - 1) / block;
 
-			SampleStride(grid, block, sample_size, stride,
+			SampleStride(grid, block, sample_size, Count, stride,
 				Xs, Ys, D > 2 ? Zs : nullptr,
 				VXs, VYs, D > 2 ? VZs : nullptr,
 				AX_gravs, AY_gravs, D > 2 ? AZ_gravs : nullptr,
@@ -989,6 +989,15 @@ struct ParticlesCuda
 				Masss_sample, Densitys_sample, Pressures_sample,
 				(u8*)Types_sample, BoundaryPsis_sample,
 				D > 2);
+
+			cudaError_t err = cudaDeviceSynchronize();
+			if (err != cudaSuccess)
+				printf("%s\n", cudaGetErrorString(err));
+
+			cudaError_t cudaStatus = cudaGetLastError();
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "SampleKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+			}
 
 			// Copy to CPU
 			other.Resize(sample_size);

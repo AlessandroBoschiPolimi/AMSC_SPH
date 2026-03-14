@@ -26,7 +26,7 @@ __global__ void SampleStrideKernel(
 	bool use_Z = false
 );
 
-void SampleStride(size_t grid, size_t block, size_t sample_size, size_t stride,
+void SampleStride(size_t grid, size_t block, size_t sample_size, size_t size, size_t stride,
 	const float* Xs, const float* Ys, const float* Zs,
 	const float* VXs, const float* VYs, const float* VZs,
 	const float* AX_gravs, const float* AY_gravs, const float* AZ_gravs,

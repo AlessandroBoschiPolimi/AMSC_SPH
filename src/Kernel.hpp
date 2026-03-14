@@ -11,6 +11,7 @@ public:
 
 	Kernel(float h_);
 	float GetValue(const vec_t& xi, const vec_t& xj) const;
+	float GetValue(const vec_t& r) const;
 	vec_t GetGradient(const vec_t& xi, const vec_t& xj) const;
 
 private:
@@ -37,11 +38,16 @@ Kernel<D>::Kernel(float h_) : h(h_)
 template <size_t D>
 float Kernel<D>::GetValue(const vec_t& xi, const vec_t& xj) const
 {
+	vec_t r = xi - xj;
+	return GetValue(r);
+}
+template <size_t D>
+float Kernel<D>::GetValue(const vec_t& r) const
+{
 	/*
 	Definition of the kernel function according
 	to the presentation slide 52 (cubic slide)
 	*/
-	vec_t r = xi - xj;
 	float q = std::sqrt(Dot(r, r)) / h;
 	float out = 0.0f;
 	if (q < 1.0f)

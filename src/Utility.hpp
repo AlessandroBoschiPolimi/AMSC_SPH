@@ -90,6 +90,11 @@ Lasciate ogne ';', voi ch'intrate.
 #define LOGE(x)
 #endif
 
+#ifndef __CUDACC__
+#define __host__
+#define __device__
+#endif
+
 // ################################################################## ALIASES ##################################################################
 #ifdef HAS_CPP20
 namespace stdv = std::views;
@@ -136,7 +141,7 @@ static constexpr float G_CONSTANT = 9.81f;
 
 // CASTING
 template <typename T, typename X>
-inline constexpr T to(const X& x) { return static_cast<T>(x); }
+__host__ __device__ inline constexpr T to(const X& x) { return static_cast<T>(x); }
 template <typename T, typename X, typename _X>
 inline constexpr T to(const stdc::duration<_X, X>& x) { return stdc::duration_cast<T>(x); }
 
@@ -158,79 +163,79 @@ struct coord<T, 3> {
 
 
 template <typename T>
-inline coord<T, 2> operator/(const coord<T, 2>& a, const T C) {
+__host__ __device__ inline coord<T, 2> operator/(const coord<T, 2>& a, const T C) {
 	return { a.x / C,  a.y / C };
 }
 template <typename T>
-inline coord<T, 3> operator/(const coord<T, 3>& a, const T C) {
+__host__ __device__ inline coord<T, 3> operator/(const coord<T, 3>& a, const T C) {
 	return { a.x / C,  a.y / C,  a.z / C };
 }
 template <typename T>
-inline coord<T, 2> operator*(const T C, const coord<T, 2>& a) {
+__host__ __device__ inline coord<T, 2> operator*(const T C, const coord<T, 2>& a) {
 	return { C * a.x, C * a.y };
 }
 template <typename T>
-inline coord<T, 3> operator*(const T C, const coord<T, 3>& a) {
+__host__ __device__ inline coord<T, 3> operator*(const T C, const coord<T, 3>& a) {
 	return { C * a.x, C * a.y, C * a.z };
 }
 
 template <typename T>
-inline coord<T, 2> operator+(const coord<T, 2>& a, const coord<T, 2>& b) {
+__host__ __device__ inline coord<T, 2> operator+(const coord<T, 2>& a, const coord<T, 2>& b) {
 	return { a.x + b.x, a.y + b.y };
 }
 template <typename T>
-inline coord<T, 3> operator+(const coord<T, 3>& a, const coord<T, 3>& b) {
+__host__ __device__ inline coord<T, 3> operator+(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
 template <typename T>
-inline coord<T, 2> operator-(const coord<T, 2>& a, const coord<T, 2>& b) {
+__host__ __device__ inline coord<T, 2> operator-(const coord<T, 2>& a, const coord<T, 2>& b) {
 	return { a.x - b.x, a.y - b.y };
 }
 template <typename T>
-inline coord<T, 3> operator-(const coord<T, 3>& a, const coord<T, 3>& b) {
+__host__ __device__ inline coord<T, 3> operator-(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return { a.x - b.x, a.y - b.y, a.z - b.z };
 }
 
 template <typename T, size_t D>
-inline coord<T, D>& operator+=(coord<T, D>& a, const coord<T, D>& b) {
+__host__ __device__ inline coord<T, D>& operator+=(coord<T, D>& a, const coord<T, D>& b) {
 	a = a + b;
 	return a;
 }
 template <typename T, size_t D>
-inline coord<T, D>& operator-=(coord<T, D>& a, const coord<T, D>& b) {
+__host__ __device__ inline coord<T, D>& operator-=(coord<T, D>& a, const coord<T, D>& b) {
 	a = a - b;
 	return a;
 }
 
 template <typename T>
-inline bool operator==(const coord<T, 2>& a, const coord<T, 2>& b) {
+__host__ __device__ inline bool operator==(const coord<T, 2>& a, const coord<T, 2>& b) {
 	return a.x == b.x && a.y == b.y;
 }
 template <typename T>
-inline bool operator==(const coord<T, 3>& a, const coord<T, 3>& b) {
+__host__ __device__ inline bool operator==(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
 template <typename T, typename R = T>
-inline R Dot(const coord<T, 2>& a, const coord<T, 2>& b) {
+__host__ __device__ inline R Dot(const coord<T, 2>& a, const coord<T, 2>& b) {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y);
 }
 template <typename T, typename R = T>
-inline R Dot(const coord<T, 3>& a, const coord<T, 3>& b) {
+__host__ __device__ inline R Dot(const coord<T, 3>& a, const coord<T, 3>& b) {
 	return to<R>(a.x) * to<R>(b.x) + to<R>(a.y) * to<R>(b.y) + to<R>(a.z) * to<R>(b.z);
 }
 template <typename T, size_t D, typename R = T>
-inline R Norm(const coord<T, D>& a) {
+__host__ __device__ inline R Norm(const coord<T, D>& a) {
 	return std::sqrt(Dot(a, a));
 }
 
 
 template <typename T, typename R>
-inline constexpr T to(const coord<R, 2>& c) {
+__host__ __device__ inline constexpr T to(const coord<R, 2>& c) {
 	return { to<typename T::type>(c.x), to<typename T::type>(c.y) };
 }
 template <typename T, typename R>
-inline constexpr T to(const coord<R, 3>& c) {
+__host__ __device__ inline constexpr T to(const coord<R, 3>& c) {
 	return { to<typename T::type>(c.x), to<typename T::type>(c.y), to<typename T::type>(c.z) };
 }
 

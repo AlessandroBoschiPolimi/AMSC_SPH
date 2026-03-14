@@ -2,7 +2,7 @@
 #include "Utils.cuh"
 
 __global__ void SampleStrideKernel(
-	size_t sample_size, size_t stride,
+	size_t sample_size, size_t size, size_t stride,
 	const float* Xs, const float* Ys, const float* Zs,
 	const float* VXs, const float* VYs, const float* VZs,
 	const float* AX_gravs, const float* AY_gravs, const float* AZ_gravs,
@@ -22,6 +22,7 @@ __global__ void SampleStrideKernel(
 	size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx >= sample_size) return;
 	size_t src_idx = idx * stride;
+	if (src_idx >= size) return;
 
 	Xs_out[idx] = Xs[src_idx];
 	Ys_out[idx] = Ys[src_idx];
@@ -50,7 +51,7 @@ __global__ void SampleStrideKernel(
 	BoundaryPsis_out[idx] = BoundaryPsis[src_idx];
 }
 
-void SampleStride(size_t grid, size_t block, size_t sample_size, size_t stride,
+void SampleStride(size_t grid, size_t block, size_t sample_size, size_t size, size_t stride,
 	const float* Xs, const float* Ys, const float* Zs,
 	const float* VXs, const float* VYs, const float* VZs,
 	const float* AX_gravs, const float* AY_gravs, const float* AZ_gravs,
@@ -68,7 +69,7 @@ void SampleStride(size_t grid, size_t block, size_t sample_size, size_t stride,
 	bool use_Z)
 {
 	SampleStrideKernel<<<grid, block>>>(
-			sample_size, stride,
+			sample_size, size, stride,
 			Xs, Ys, Zs,
 			VXs, VYs, VZs,
 			AX_gravs, AY_gravs, AZ_gravs,

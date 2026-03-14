@@ -9,6 +9,8 @@
 
 #include "Particle.hpp"
 
+template <size_t D>
+struct ParticleCuda;
 
 namespace cudasph
 {
@@ -21,16 +23,8 @@ namespace cudasph
 		return;
 	}
 
-	template <size_t D>
-	__global__ void StepKernel(base::SPHParams params, base::SPHProfiling* dProfiling, ParticlesCuda<D> dParticles)
-	{
-		int i = blockIdx.x * blockDim.x + threadIdx.x;
-		dParticles.DSetPositionY(i, dParticles.DPositionY(i) + 0.00001);
 
-		return;
-	}
-
-	void RunStepKernel(size_t size, base::SPHParams params, base::SPHProfiling* dProfiling, ParticlesCuda<2> dParticles);
-	void RunStepKernel(size_t size, base::SPHParams params, base::SPHProfiling* dProfiling, ParticlesCuda<3> dParticles);
+	void RunStepKernels(size_t frame, base::SPHParams params, ParticlesCuda<2> dParticles, base::SPHProfiling& profiling, Grid2& grid, GridGPU& gridGPU);
+	void RunStepKernels(size_t frame, base::SPHParams params, ParticlesCuda<3> dParticles, base::SPHProfiling& profiling, Grid3& grid, GridGPU& gridGPU);
 }
 #endif
