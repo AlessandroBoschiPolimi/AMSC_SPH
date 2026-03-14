@@ -56,7 +56,6 @@ void TestCuda()
 
 	cudasph::SPHSimulation<2> sph;
 	sph.SetName("CUDA");
-	sph.SetParams(base::SPHParams{});
 	sph.InitializeFluid(&init);
 
 	CudaImGuiViewer viewer;

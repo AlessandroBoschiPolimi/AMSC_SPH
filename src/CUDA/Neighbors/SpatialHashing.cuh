@@ -123,7 +123,7 @@ __global__ void reorderParticles(
 
 __global__ void findCellStartEnd(
 	int N,
-	unsigned int* cellHash,
+	const unsigned int* cellHash,
 	int* cellStart,
 	int* cellEnd);
 
@@ -146,7 +146,54 @@ __device__ void forEachNeighbor(
 	Grid3 grid,
 	Callback callback)
 {
-	extern __shared__ float3 sharedPos3[];
+	int3 cell = calcCell(pos_i, grid);
+
+    for (int dz = -1; dz <= 1; dz++)
+    for (int dy = -1; dy <= 1; dy++)
+    for (int dx = -1; dx <= 1; dx++)
+    {
+        int3 neigh = make_int3(cell.x + dx, cell.y + dy, cell.z + dz);
+
+        if (neigh.x < 0 || neigh.y < 0 || neigh.z < 0)
+            continue;
+
+        if (neigh.x >= grid.resolution.x ||
+            neigh.y >= grid.resolution.y ||
+            neigh.z >= grid.resolution.z)
+            continue;
+
+        int hash = flattenCell(neigh, grid);
+
+        int start = cellStart[hash];
+        int end   = cellEnd[hash];
+
+        if (start == -1) continue;
+
+        for (int neighborIndex = start; neighborIndex < end; neighborIndex++)
+        {
+            if (neighborIndex == i) continue;
+
+            float3 pos_j = make_float3(
+                xs[neighborIndex],
+                ys[neighborIndex],
+                zs[neighborIndex]
+            );
+
+            float3 r;
+            r.x = pos_i.x - pos_j.x;
+            r.y = pos_i.y - pos_j.y;
+            r.z = pos_i.z - pos_j.z;
+
+            float r2 = r.x*r.x + r.y*r.y + r.z*r.z;
+
+            if (r2 < h2)
+            {
+                callback(i, neighborIndex, to_vec(r), r2);
+            }
+        }
+    }
+
+	/*extern __shared__ float3 sharedPos3[];
 
 	int tid = threadIdx.x;
 
@@ -188,6 +235,7 @@ __device__ void forEachNeighbor(
 			for (int k = 0; k < count; k++)
 			{
 				int neighborIndex = j + k;
+				if (neighborIndex == i) continue;
 				float3 pos_j = sharedPos3[k];
 
 				float3 r;
@@ -205,7 +253,7 @@ __device__ void forEachNeighbor(
 
 			__syncthreads();
 		}
-	}
+	}*/
 }
 
 template <typename Callback>
@@ -220,7 +268,51 @@ __device__ void forEachNeighbor(
 	Grid2 grid,
 	Callback callback)
 {
-	extern __shared__ float2 sharedPos2[];
+	int2 cell = calcCell(pos_i, grid);
+
+    for (int dz = -1; dz <= 1; dz++)
+    for (int dy = -1; dy <= 1; dy++)
+    for (int dx = -1; dx <= 1; dx++)
+    {
+        int2 neigh = make_int2(cell.x + dx, cell.y + dy);
+
+        if (neigh.x < 0 || neigh.y < 0)
+            continue;
+
+        if (neigh.x >= grid.resolution.x ||
+            neigh.y >= grid.resolution.y)
+            continue;
+
+        int hash = flattenCell(neigh, grid);
+
+        int start = cellStart[hash];
+        int end   = cellEnd[hash];
+
+        if (start == -1) continue;
+
+        for (int neighborIndex = start; neighborIndex < end; neighborIndex++)
+        {
+            if (neighborIndex == i) continue;
+
+            float2 pos_j = make_float2(
+                xs[neighborIndex],
+                ys[neighborIndex]
+            );
+
+            float2 r;
+            r.x = pos_i.x - pos_j.x;
+            r.y = pos_i.y - pos_j.y;
+
+            float r2 = r.x*r.x + r.y*r.y;
+
+            if (r2 < h2)
+            {
+                callback(i, neighborIndex, to_vec(r), r2);
+            }
+        }
+    }
+
+	/*extern __shared__ float2 sharedPos2[];
 
 	int tid = threadIdx.x;
 
@@ -260,6 +352,7 @@ __device__ void forEachNeighbor(
 			for (int k = 0; k < count; k++)
 			{
 				int neighborIndex = j + k;
+				if (neighborIndex == i) continue;
 				float2 pos_j = sharedPos2[k];
 
 				float2 r;
@@ -276,7 +369,7 @@ __device__ void forEachNeighbor(
 
 			__syncthreads();
 		}
-	}
+	}*/
 }
 
 }

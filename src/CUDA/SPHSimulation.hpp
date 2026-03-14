@@ -54,13 +54,6 @@ public:
 	void SetName(const std::string& name) { m_Name = name; }
 	std::string GetName() const { return m_Name; }
 
-	void SetParams(const base::SPHParams& params) { m_Params = params; }
-	void SetRestDensity(float val) { m_Params.RestDensity = val; }
-	void SetStiffness(float val) { m_Params.Stiffness = val; }
-	void SetViscosity(float val) { m_Params.Viscosity = val; }
-	void SetTimeStep(float val) { m_Params.TimeStep = val; }
-	void SetSmoothingLength(float val) { m_Params.SmoothingLength = val; }
-	void SetFinalTime(float val) { m_Params.FinalTime = val; }
 	base::SPHParams GetParams() const { return m_Params; }
 	float GetRestDensity() const { return m_Params.RestDensity; }
 	float GetStiffness() const { return m_Params.Stiffness; }
@@ -86,7 +79,7 @@ private:
 	}
 
 private:
-	base::SPHParams m_Params;
+	const base::SPHParams m_Params;
 
 	Particles m_HParticles;
 	ParticlesCuda<D> m_DParticles;
@@ -116,13 +109,13 @@ inline void SPHSimulation<D>::Start()
 
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
-		// TODO: send m_Particles to the GPU
 		size_t N = m_ParticleCount;
 		m_DParticles.Malloc(N);
 		m_DParticles.MemcpyFrom(m_HParticles);
 
 		if constexpr (D == 2)
 		{
+			// TODO: fetch from initializer
 			float2 minBound = make_float2(-0.2, -0.2);
 			float2 maxBound = make_float2(1.2, 1.2);
 			m_Grid.Grid.init(minBound, maxBound, m_Params.SmoothingLength);
@@ -136,11 +129,6 @@ inline void SPHSimulation<D>::Start()
 
 		mallocGridGPU(m_GridGPU, N, m_Grid.Grid.totalCells);
 
-		//cudaMalloc((void**)&m_DProfiling, sizeof(base::SPHProfiling));
-		//cudaMemset(m_DProfiling, 0, sizeof(base::SPHProfiling));
-
-		// initNeighborGrid();
-
 		m_Running = true;
 	}
 
@@ -151,11 +139,9 @@ inline void SPHSimulation<D>::Start()
 		std::lock_guard<std::mutex> lock(m_Mutex);
 		m_Running = false;
 		
-		// TODO: free GPU
 		m_DParticles.MemcpyTo(m_HParticles);
 		m_DParticles.Free();
 		freeGridGPU(m_GridGPU);
-		//cudaFree(m_DProfiling);
 	}
 }
 

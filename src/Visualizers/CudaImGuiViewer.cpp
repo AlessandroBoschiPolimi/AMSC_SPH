@@ -69,17 +69,11 @@ void CudaImGuiViewer::OnEndFrame()
 
 	if (m_Changed)
 	{
-		this->m_Sim->SetParams(m_SimParams);
+		//this->m_Sim->SetParams(m_SimParams);
 		m_Changed = false;
 	}
 
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
-	// TODO: triple buffering
-	// TODO: there is no need for m_Particles to have the same memory layout of sim particles
-	//       this could be turned in a copy like
-	//       m_Sim->GetParticles().Populate(m_Particles)
-	//       which fills the particles efficiently (for SoA resize and populate all positions first, then velocity...)
-	// TODO: copy only like 10%-1% of them for GPU simulations.
 
 	if (m_RequestNewParticles)
 	{
@@ -119,6 +113,7 @@ void CudaImGuiViewer::DrawStatsWindow()
 
 	ImGui::Separator();
 	{
+		ImGui::BeginDisabled();
 		m_Changed |= ImGui::SliderFloat("Rest Density", &m_SimParams.RestDensity, 500, 1500, "%.0f");
 		m_Changed |= ImGui::SliderFloat("Stiffness", &m_SimParams.Stiffness, 0, 1, "%.5f");
 		m_Changed |= ImGui::SliderFloat("Viscosity", &m_SimParams.Viscosity, 0, 5e-4, "%.5f");
@@ -126,6 +121,7 @@ void CudaImGuiViewer::DrawStatsWindow()
 		m_Changed |= ImGui::SliderFloat("Smoothing Length", &m_SimParams.SmoothingLength, 0.0001f, 0.5f, "%.7f");
 		m_Changed |= ImGui::SliderFloat("Final Time", &m_SimParams.FinalTime, 0.0f, 100.0f, "%.2f");
 		m_Changed |= ImGui::SliderInt("Sample Stride", &m_Stride, 1, 1000);
+		ImGui::EndDisabled();
 	}
 
 	ImGui::Separator();

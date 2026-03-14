@@ -25,9 +25,9 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 	int maxx = 100, maxy = 100;
 	vec_t vertical_direction{ 0, -1 };
 	vec_t zero_direction{ 0, 0 };
-	for (float x = 2; x < 84; x += 0.25)
+	for (float x = 2; x < 84; x += 0.5)
 	{
-		for (float y = 5.3; y < 95; y += 0.25)
+		for (float y = 5.3; y < 95; y += 0.5)
 		{
 			Particle<2> p;
 			p.Type = FLUID;
