@@ -270,7 +270,6 @@ __device__ void forEachNeighbor(
 {
 	int2 cell = calcCell(pos_i, grid);
 
-    for (int dz = -1; dz <= 1; dz++)
     for (int dy = -1; dy <= 1; dy++)
     for (int dx = -1; dx <= 1; dx++)
     {

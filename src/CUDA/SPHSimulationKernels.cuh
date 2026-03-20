@@ -24,7 +24,7 @@ namespace cudasph
 	}
 
 
-	void RunStepKernels(const size_t frame, const base::SPHParams& params, ParticlesCuda<2> dParticles, base::SPHProfiling& profiling, Grid2& grid, GridGPU& gridGPU);
+	void RunStepKernels(const size_t frame, const base::SPHParams& params, ParticlesCuda<2>& dParticles, base::SPHProfiling& profiling, Grid2& grid, GridGPU& gridGPU);
 	void RunStepKernels(const size_t frame, const base::SPHParams& params, ParticlesCuda<3> dParticles, base::SPHProfiling& profiling, Grid3& grid, GridGPU& gridGPU);
 }
 #endif

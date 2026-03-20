@@ -432,6 +432,8 @@ namespace cudasph
 				density += DParticles2.Masss[j] * W_ij;
 			else // Boundary handling
 				density += DParticles2.BoundaryPsis[j] * W_ij;
+
+			printf("Neighbor\n");
 		}
 	};
 	struct AccelerationViscosityCallback2
@@ -707,14 +709,14 @@ namespace cudasph
 
 	void RunStepKernels(
 		const size_t frame, const base::SPHParams& params, 
-		ParticlesCuda<2> dParticles, base::SPHProfiling& profiling,
+		ParticlesCuda<2>& dParticles, base::SPHProfiling& profiling,
 		Grid2& grid, GridGPU& gridGPU)
 	{
 		int threads = 256;
 		int blocks = (dParticles.Size() + threads - 1) / threads;
 		size_t sharedMem = sizeof(float2) * threads;
 
-		std::cout << "BANANA 1\n";
+		LOG("BANANA 1\n");
 		
 		cudaError_t err;
 
@@ -740,6 +742,11 @@ namespace cudasph
 			LOG("BANANA 2\n");
 			buildGrid(dParticles, grid, gridGPU);
 
+			cudaMemcpyToSymbol(DParticles2, &dParticles, sizeof(ParticlesCuda<2>));
+			err = cudaDeviceSynchronize();
+			if (err != cudaSuccess)
+				printf("Memcpy Symbols Again 2: %s\n", cudaGetErrorString(err));
+
 			profiling.Neighbors = stdclock::now() - start;
 		}
 		{
@@ -753,14 +760,14 @@ namespace cudasph
 				err = cudaDeviceSynchronize();
 				if (err != cudaSuccess)
 					printf("ComputeDensityOrBoundaryPsiKernel2: %s\n", cudaGetErrorString(err));
-
-				LOG("BANANA 31\n");
-
-				ComputeAccelerationViscosityKernel2<<<blocks, threads>>>();
-				err = cudaDeviceSynchronize();
-				if (err != cudaSuccess)
-					printf("ComputeAccelerationViscosityKernel2: %s\n", cudaGetErrorString(err));
 			}
+		
+			LOG("BANANA 31\n");
+
+			ComputeAccelerationViscosityKernel2<<<blocks, threads>>>();
+			err = cudaDeviceSynchronize();
+			if (err != cudaSuccess)
+				printf("ComputeAccelerationViscosityKernel2: %s\n", cudaGetErrorString(err));
 
 			LOG("BANANA 32\n");
 

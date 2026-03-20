@@ -72,7 +72,7 @@ private:
 	stdc::time_point<stdclock> m_SimFrameStart;
 	float m_MaxVelocity = 2.5, m_MaxPressure = 10000;
 
-	i32 m_Stride = 3;
+	i32 m_Stride = 1;
 
 	float m_SimTime = 0;
 	base::SPHProfiling m_SimProfiling;

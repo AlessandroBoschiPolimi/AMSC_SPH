@@ -38,6 +38,9 @@ namespace cudasph
 		cell.x = floorf((p.x - grid.origin.x) / grid.cellSize);
 		cell.y = floorf((p.y - grid.origin.y) / grid.cellSize);
 
+		cell.x = max(0, min(cell.x, grid.resolution.x - 1));
+		cell.y = max(0, min(cell.y, grid.resolution.y - 1));
+
 		return cell;
 	}
 
@@ -105,8 +108,8 @@ namespace cudasph
 	__global__ void reorderParticles(
 		int N,
 		unsigned int* particleIndex,
-		float* xs, float* ys,
-		float* xsSorted, float* ysSorted)
+		float* xs, float* ys, ParticleType* ts, float* ms,
+		float* xsSorted, float* ysSorted, ParticleType* tsSorted, float* msSorted)
 	{
 		int i = blockIdx.x * blockDim.x + threadIdx.x;
 		if (i >= N) return;
@@ -115,19 +118,21 @@ namespace cudasph
 
 		xsSorted[i] = xs[sortedIndex];
 		ysSorted[i] = ys[sortedIndex];
+		tsSorted[i] = ts[sortedIndex];
+		msSorted[i] = ms[sortedIndex];
 	}
 
 	__global__ void findCellStartEnd(
 		int N,
 		const unsigned int* cellHash,
 		int* cellStart,
-		int* cellEnd)
+		int* cellEnd, int cells)
 	{
 		int i = blockIdx.x * blockDim.x + threadIdx.x;
 		if (i >= N) return;
 
 		unsigned int hash = cellHash[i];
-		if (hash >= N) return;
+		if (hash >= cells) return;
 
 		// First particle of this hash sets the start
 		if (i == 0 || hash != cellHash[i - 1])
@@ -208,7 +213,7 @@ namespace cudasph
 			N,
 			gridGPU.cellHash,
 			gridGPU.cellStart,
-			gridGPU.cellEnd
+			gridGPU.cellEnd, grid.totalCells
 		);
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess)
@@ -256,27 +261,35 @@ namespace cudasph
 
 		float* XsSorted; cudaMalloc(&XsSorted, N * sizeof(float));
 		float* YsSorted; cudaMalloc(&YsSorted, N * sizeof(float));
+		float* MsSorted; cudaMalloc(&MsSorted, N * sizeof(float));
+		ParticleType* TsSorted; cudaMalloc(&TsSorted, N * sizeof(ParticleType));
 
 		reorderParticles<<<gridSize, block>>>(
 			N,
 			gridGPU.particleIndex,
 			particles.Xs,
 			particles.Ys,
+			particles.Types,
+			particles.Masss,
 			XsSorted,
-			YsSorted
+			YsSorted,
+			TsSorted,
+			MsSorted
 		);
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess)
 			printf("reorderParticles: %s\n", cudaGetErrorString(err));
 
-		particles.Xs = XsSorted;
-		particles.Ys = YsSorted;
+		cudaFree(particles.Xs); particles.Xs = XsSorted;
+		cudaFree(particles.Ys); particles.Ys = YsSorted;
+		cudaFree(particles.Types); particles.Types = TsSorted;
+		cudaFree(particles.Masss); particles.Masss = MsSorted;
 
 		findCellStartEnd<<<gridSize, block>>>(
 			N,
 			gridGPU.cellHash,
 			gridGPU.cellStart,
-			gridGPU.cellEnd
+			gridGPU.cellEnd, grid.totalCells
 		);
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess)

@@ -884,7 +884,7 @@ struct ParticlesCuda
 	template <ParticleSet<D> Particles>
 	void MemcpyTo(Particles& other, u32 stride = 1) const
 	{
-		if (stride == 1 || true)
+		if (stride == 1)
 		{
 			other.Resize(Count);
 

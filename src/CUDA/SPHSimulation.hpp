@@ -168,6 +168,8 @@ inline void SPHSimulation<D>::Step()
 	m_Time += m_Params.TimeStep;
 	m_Frame++;
 
+	std::this_thread::sleep_for(36ms); // TODO: remove
+
 	NotifyEndFrame();
 }
 
@@ -184,7 +186,6 @@ template <size_t D>
 inline SPHSimulation<D>::Particles& SPHSimulation<D>::GetParticles(u32 stride)
 {
 	std::lock_guard<std::mutex> lock(m_Mutex);
-	std::cout << "CCC\n";
 	m_DParticles.MemcpyTo<ParticleSoA<D>>(m_HParticles, stride);
 	return m_HParticles;
 }
