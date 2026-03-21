@@ -66,6 +66,7 @@ private:
 	unsigned int m_DockspaceID = 0, m_DockIDLeft = 0, m_DockIDCenter = 0;
 
 	bool m_Changed = false;
+	bool m_RequestNewParticles = true;
 
 	float m_SimFPS = 0, m_SimTrueFPS = 0;
 	int m_SimFramesCounter = 0;

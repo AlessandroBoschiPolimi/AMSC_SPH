@@ -1,6 +1,6 @@
 #pragma once
 #include "Base/Neighbors/NeighborFinder.hpp"
-
+#include <omp.h>
 
 namespace openmp
 {
@@ -17,8 +17,6 @@ public:
 	virtual ~NeighborFinder() override = default;
 
 	virtual void InitializeFrame(SPHSimulation<D, Particles>* sim) {}
-	/// Populates "out" with the neighbors of particle i-th
-	void Find(idx_t i, std::vector<idx_t>& out) = 0;
 
 protected:
 

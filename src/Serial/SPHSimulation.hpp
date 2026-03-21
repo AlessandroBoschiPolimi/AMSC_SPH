@@ -92,33 +92,36 @@ inline void SPHSimulation<D, Particles>::Step()
 	for (auto& obj : this->m_Objects)
 		obj->OnFrameStart();
 
-	m_Neighbors.clear();
-	m_Neighbors.resize(m_Particles.Size());
+	if (m_Neighbors.size() != m_Particles.Size())
+	{
+		m_Neighbors.clear();
+		m_Neighbors.resize(m_Particles.Size());
+	}
 
 	{
 		stdc::time_point<stdclock> start;
-		{ start = stdclock::now(); }
+		start = stdclock::now();
 
 		m_NeighborFinder->InitializeFrame(this);
 		FindAllNeighbors();
 
-		{ this->m_Profiling.Neighbors = stdclock::now() - start; }
+		this->m_Profiling.Neighbors = stdclock::now() - start;
 	}
 	{
 		stdc::time_point<stdclock> start;
-		{ start = stdclock::now(); }
+		start = stdclock::now();
 
 		Initialize();
 
-		{ this->m_Profiling.Initialize = stdclock::now() - start; }
+		this->m_Profiling.Initialize = stdclock::now() - start;
 	}
 	{
 		stdc::time_point<stdclock> start;
-		{ start = stdclock::now(); }
+		start = stdclock::now();
 
 		IterativePressure();
 
-		{ this->m_Profiling.IterativePressure = stdclock::now() - start; }
+		this->m_Profiling.IterativePressure = stdclock::now() - start;
 	}
 
 	this->m_Time += this->m_Params.TimeStep;

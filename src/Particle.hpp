@@ -488,7 +488,7 @@ struct ParticleSoA
 		out.resize(Xs.size());
 
 		for (size_t i = 0; i < Xs.size(); ++i)
-			out[i] = GetParticle(i);
+			out[i] = GetParticle(i); // TODO: improve, populating all positions first...
 	}
 
 	void SetParticle(size_t i, const Particle<D>& p)

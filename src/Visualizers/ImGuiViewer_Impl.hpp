@@ -76,7 +76,12 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	//       this could be turned in a copy like
 	//       m_Sim->GetParticles().Populate(m_Particles)
 	//       which fills the particles efficiently (for SoA resize and populate all positions first, then velocity...)
-	m_Particles = this->m_Sim->GetParticles();
+	
+	if (m_RequestNewParticles)
+	{
+		m_RequestNewParticles = false;
+		m_Particles = this->m_Sim->GetParticles();
+	}
 }
 template <ParticleSet<2> Particles>
 void ImGuiViewer<Particles>::OnStartFrame()
@@ -104,7 +109,7 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 #endif
 	ImGui::Begin("SPH Stats");
 
-	ImGui::Text(m_SimName.c_str());
+	ImGui::TextUnformatted(m_SimName.c_str());
 
 	ImGui::Separator();
 	{
@@ -145,7 +150,7 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 
 				ImGui::BeginTooltip();
 				std::string label = std::format("{}: {:.1f}%%", labels[hovering], parts[hovering] / sum * 100);
-				ImGui::Text(label.c_str());
+				ImGui::TextUnformatted(label.c_str());
 				ImGui::EndTooltip();
 			}
 		}
@@ -365,6 +370,8 @@ void ImGuiViewer<Particles>::Loop()
 
 			DrawStatsWindow();
 			DrawVisualizationWindow();
+
+			m_RequestNewParticles = true;
 		}
 
 		// Rendering
