@@ -47,7 +47,7 @@ public:
 	void BuildWallAlongXY(Particles& out, float z, float minx, float maxx, float miny, float maxy, float delta) const;
 
 	/// Returns { min-xyz, max-xyz }
-	virtual std::pair<coord<float, 3>, coord<float, 3>> GetDomain() = 0;
+	virtual std::pair<coord<float, 3>, coord<float, 3>> GetDomain() const = 0;
 };
 
 

@@ -264,7 +264,7 @@ inline void SPHSimulation<D, Particles>::ComputeBoundaryPsi(idx_t i)
 			V += W_Ker.GetValue(m_Particles_local.Position(i), particle->Position(ind));
 	}
 	// Clamp the values in case the volume is too small
-	m_Particles_local.SetBoundaryPsi(i, (V > 1.0f) ? this->m_Params.RestDensity / V : 0);
+	m_Particles_local.SetBoundaryPsi(i, (V > 1.0e-2f) ? this->m_Params.RestDensity / V : 0);
 }
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::ComputeDensity(idx_t i)

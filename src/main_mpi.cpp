@@ -22,21 +22,22 @@ MPI_Comm_size(mpi_comm, &mpi_size );
 int mpi_rank;
 MPI_Comm_rank(mpi_comm, &mpi_rank);
 {
-	constexpr size_t Size = 2;
+	constexpr size_t Size = 3;
 	using Particles = ParticleAoS<Size>;
 
 	//mpi::SpatialHashing<Size, Particles> nf;
-	mpi::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+	mpi::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
 	mpi::SPHSimulation<Size, Particles> sph(&nf);
 	sph.SetRank(mpi_rank, mpi_comm, mpi_size);
 	if (mpi_rank == 0)
 	{
-		ImGuiViewer<Particles> imguiViewer;
-		BoxInitializer<Size, Particles> initializer;
+		FileExporter<Size, Particles> imguiViewer;
+		imguiViewer.SetFrequency(20);
+		TrayInitializer<Size, Particles> initializer;
 		sph.InitializeFluid(&initializer);
 
 		sph.AddObserver(&imguiViewer);
-		imguiViewer.Start();
+		//imguiViewer.Start();
 		sph.Start();
 	}
 	else
