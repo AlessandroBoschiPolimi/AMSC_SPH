@@ -12,17 +12,18 @@ class Source<2, Particles> : public Object<2, Particles>
 {
 public:
 	using idx_t = Object<2, Particles>::idx_t;
-
+	Source(const coord<float, 2> A_, const coord<float, 2> B_, Particles& out_, const bool is_right_) : Object<2, Particles>(A_, B_, out_, is_right_) {}
 	~Source() override = default;
 
 	void OnFrameStart() override;
-	void SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_);
+	void SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_);
 
 private:
 	float v;
 	int part_count;
 	int fp_count;
 	float mass;
+	bool is_gravity;
 	int ii = 0;
 };
 
@@ -49,17 +50,21 @@ inline void Source<2, Particles>::OnFrameStart()
 		p.Velocity.y = norm_v.y;
 		p.Density = p.Mass * Dot(len, len);
 		p.Type = FLUID;
-		p.A_grav = G_CONSTANT * vertical;
+		if (is_gravity)
+			p.A_grav = G_CONSTANT * vertical;
+		else 
+			p.A_grav = {0, 0};
 		this->out.PushBack(p);
 	}
 }
 
 template <ParticleSet<2> Particles>
-inline void Source<2, Particles>::SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_)
+inline void Source<2, Particles>::SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_)
 {
 	v = v_;
 	part_count = part_count_;
 	fp_count = fp_count_;
 	mass = mass_;
+	is_gravity = is_gravity_;
 }
 

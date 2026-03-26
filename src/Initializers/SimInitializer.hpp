@@ -25,7 +25,7 @@ public:
 	void BuildBox(Particles& out, coord<float, 2> left_bottom_corner, float xsize, float ysize, float delta) const;
 	void BuildCircle(Particles& out, coord<float, 2> centre, float radius, float delta) const;
 	void AddSink(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right) const;
-	void AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const;
+	void AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass, bool is_gravity) const;
 
 	/// Returns { min-xy, max-xy }
 	virtual std::pair<coord<float, 2>, coord<float, 2>> GetDomain() const = 0;
@@ -138,10 +138,10 @@ inline void SimInitializer<2, Particles>::AddSink(Objects& obj, const coord<floa
 	obj.push_back(std::make_unique<Sink<2, Particles>>(A, B, out, is_right));
 }
 template <ParticleSet<2> Particles>
-inline void SimInitializer<2, Particles>::AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass) const
+inline void SimInitializer<2, Particles>::AddSource(Objects& obj, const coord<float, 2> A, const coord<float, 2> B, Particles& out, const bool is_right, const float v, const int parts, const int fp_count, const float mass, const bool is_gravity) const
 {
 	auto o = std::make_unique<Source<2, Particles>>(A, B, out, is_right);
-	o->SetParams(v, parts, fp_count, mass);
+	o->SetParams(v, parts, fp_count, mass, is_gravity);
 	obj.push_back(std::move(o));
 }
 
