@@ -16,7 +16,7 @@ public:
 	~Source() override = default;
 
 	void OnFrameStart() override;
-	void SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_);
+	void SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_, const int max_frame_);
 
 private:
 	float v;
@@ -25,12 +25,17 @@ private:
 	float mass;
 	bool is_gravity;
 	int ii = 0;
+	long unsigned int frame_counter = 0;
+	int max_frame = 0;
 };
 
 template <ParticleSet<2> Particles>
 inline void Source<2, Particles>::OnFrameStart()
 {
+	if (frame_counter > max_frame && max_frame != 0)
+		return;
 	ii++;
+	frame_counter++;
 	if (ii % fp_count != 0)
 		return;
 	ii = 0;
@@ -59,12 +64,13 @@ inline void Source<2, Particles>::OnFrameStart()
 }
 
 template <ParticleSet<2> Particles>
-inline void Source<2, Particles>::SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_)
+inline void Source<2, Particles>::SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_, const int max_frame_)
 {
 	v = v_;
 	part_count = part_count_;
 	fp_count = fp_count_;
 	mass = mass_;
 	is_gravity = is_gravity_;
+	max_frame = max_frame_;
 }
 
