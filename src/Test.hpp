@@ -23,6 +23,7 @@ void Test_2D_OpenMP_Hashing();
 void Test_2D_Serial_Morton();
 void Test_2D_Serial_Hashing();
 void Test_2D_Pipe_OpenMP_Morton();
+void Test_2D_Pascal_OpenMP_Morton();
 void Test_Correctness_Generate();
 void Test_Correctness_Check();
 

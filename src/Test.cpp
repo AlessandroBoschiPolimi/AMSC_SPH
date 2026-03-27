@@ -11,6 +11,7 @@
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
 #include "Initializers/PipeInitializer.hpp"
+#include "Initializers/PascalInitializer.hpp"
 
 #include "OpenMP/Neighbors/SpatialHashing.hpp"
 #include "OpenMP/Neighbors/MortonSorting.hpp"
@@ -119,7 +120,7 @@ void Test_2D_Pipe_OpenMP_Morton()
 	openmp::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
 
 	openmp::SPHSimulation<Size, Particles> sph(&nf);
-	sph.SetName("AoS-Pipe-OpenMP-Morton-");
+	sph.SetName("AoS-Pipe-OpenMP-Morton");
 
 	PipeInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);
@@ -131,7 +132,26 @@ void Test_2D_Pipe_OpenMP_Morton()
 	sph.Start();
 
 }
+void Test_2D_Pascal_OpenMP_Morton()
+{
+	constexpr size_t Size = 2;
+	using Particles = ParticleAoS<Size>;
 
+	openmp::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+
+	openmp::SPHSimulation<Size, Particles> sph(&nf);
+	sph.SetName("AoS-Pascal-OpenMP-Morton");
+
+	PascalInitializer<Size, Particles> initializer;
+	sph.InitializeFluid(&initializer);
+
+	ImGuiViewer<Particles> imguiViewer;
+	sph.AddObserver(&imguiViewer);
+	imguiViewer.Start();
+
+	sph.Start();
+
+}
 //void Test_3D_OpenMP_Morton()
 //{
 //	constexpr size_t Size = 3;
