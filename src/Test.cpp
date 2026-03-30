@@ -6,7 +6,9 @@
 #include "Serial/SPHSimulation.hpp"
 
 #include "Visualizers/FileExporter.hpp"
+#ifndef DISABLE_UI
 #include "Visualizers/ImGuiViewer.hpp"
+#endif
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
@@ -19,7 +21,7 @@
 #include "Serial/Neighbors/SpatialHashing.hpp"
 #include "Serial/Neighbors/MortonSorting.hpp"
 
-
+#ifndef DISABLE_UI
 void Test_Correctness_Check()
 {
 	CompareSeries<2>("Correctness/AoS_OMP_Morton", "Correctness/AoS_Serial_Morton");
@@ -54,6 +56,7 @@ void Test_2D_OpenMP_Morton()
 {
 	GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
 }
+#endif
 void Test_2D_OpenMP_Hashing()
 {
 	constexpr size_t Size = 2;
@@ -67,10 +70,11 @@ void Test_2D_OpenMP_Hashing()
 	BoxInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);
 
+#ifndef DISABLE_UI
 	ImGuiViewer<Particles> imguiViewer;
 	sph.AddObserver(&imguiViewer);
 	imguiViewer.Start();
-
+#endif
 	sph.Start();
 }
 
@@ -87,10 +91,11 @@ void Test_2D_Serial_Morton()
 	BoxInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);
 
+#ifndef DISABLE_UI
 	ImGuiViewer<Particles> imguiViewer;
 	sph.AddObserver(&imguiViewer);
 	imguiViewer.Start();
-
+#endif
 	sph.Start();
 }
 void Test_2D_Serial_Hashing()
@@ -106,10 +111,11 @@ void Test_2D_Serial_Hashing()
 	BoxInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);
 
+#ifndef DISABLE_UI
 	ImGuiViewer<Particles> imguiViewer;
 	sph.AddObserver(&imguiViewer);
 	imguiViewer.Start();
-
+#endif
 	sph.Start();
 }
 void Test_2D_Pipe_OpenMP_Morton()
@@ -125,10 +131,11 @@ void Test_2D_Pipe_OpenMP_Morton()
 	PipeInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);
 
+#ifndef DISABLE_UI
 	ImGuiViewer<Particles> imguiViewer;
 	sph.AddObserver(&imguiViewer);
 	imguiViewer.Start();
-
+#endif
 	sph.Start();
 
 }
@@ -144,11 +151,11 @@ void Test_2D_Pascal_OpenMP_Morton()
 
 	PascalInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);
-
+#ifndef DISABLE_UI
 	ImGuiViewer<Particles> imguiViewer;
 	sph.AddObserver(&imguiViewer);
 	imguiViewer.Start();
-
+#endif
 	sph.Start();
 
 }

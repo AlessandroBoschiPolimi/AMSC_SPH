@@ -38,7 +38,7 @@ struct morton_sorting_data_impl<3> {
 };
 
 
-template <size_t D, ParticleSet<D> Particles>
+template <size_t D, ParticleSet<D> Particles =ParticleAoS<D>>
 class MortonSorting : public NeighborFinder<D, Particles>
 {
 public:

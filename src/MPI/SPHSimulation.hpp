@@ -6,7 +6,7 @@
 namespace mpi
 {
 
-template <size_t D, ParticleSet<D> Particles>
+template <size_t D, ParticleSet<D> Particles = ParticleAoS<D>>
 class SPHSimulation : public base::SPHSimulation<D, Particles>
 {
 public:

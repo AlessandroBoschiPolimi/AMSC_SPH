@@ -6,7 +6,10 @@
 #include "Serial/SPHSimulation.hpp"
 
 #include "Visualizers/FileExporter.hpp"
+
+#ifndef DISABLE_UI
 #include "Visualizers/ImGuiViewer.hpp"
+#endif
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
@@ -29,6 +32,7 @@ void Test_Correctness_Check();
 
 /// Dont call the following functions directly.
 
+#ifndef DISABLE_UI
 template <size_t D, ParticleSet<D> Particles>
 serial::MortonSorting<D, Particles> GenerateTest_serial_MortonSorting(const SimInitializer<D, Particles>* i)
 {
@@ -128,3 +132,4 @@ void Test(const std::string& name, const base::SPHParams& params, const std::fun
 
 	sph.Start();
 }
+#endif

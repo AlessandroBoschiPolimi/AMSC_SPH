@@ -4,7 +4,10 @@
 #include "MPI/SPHSimulation.hpp"
 
 #include "Visualizers/FileExporter.hpp"
+
+#ifndef DISABLE_UI
 #include "Visualizers/ImGuiViewer.hpp"
+#endif
 
 #include "MPI/Neighbors/SpatialHashing.hpp"
 #include "MPI/Neighbors/MortonSorting.hpp"
@@ -22,22 +25,25 @@ MPI_Comm_size(mpi_comm, &mpi_size );
 int mpi_rank;
 MPI_Comm_rank(mpi_comm, &mpi_rank);
 {
-	constexpr size_t Size = 3;
-	using Particles = ParticleAoS<Size>;
+	constexpr size_t Size = 2;
 
 	//mpi::SpatialHashing<Size, Particles> nf;
-	mpi::MortonSorting<Size, Particles> nf({ 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
-	mpi::SPHSimulation<Size, Particles> sph(&nf);
+	mpi::MortonSorting<Size> nf({ 0.0f, 0.0f}, { 1.0f, 1.0f});
+	mpi::SPHSimulation<Size> sph(&nf);
 	sph.SetRank(mpi_rank, mpi_comm, mpi_size);
 	if (mpi_rank == 0)
 	{
-		FileExporter<Size, Particles> imguiViewer;
-		imguiViewer.SetFrequency(20);
-		TrayInitializer<Size, Particles> initializer;
+		using Particles = ParticleAoS<Size>;
+#ifndef DISABLE_UI
+		ImGuiViewer<Particles> imguiViewer;
+#endif
+		BoxInitializer<Size, Particles> initializer;
 		sph.InitializeFluid(&initializer);
 
+#ifndef DISABLE_UI
 		sph.AddObserver(&imguiViewer);
-		//imguiViewer.Start();
+		imguiViewer.Start();
+#endif
 		sph.Start();
 	}
 	else

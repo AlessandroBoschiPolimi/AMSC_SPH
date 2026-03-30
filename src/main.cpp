@@ -1,11 +1,15 @@
 #include "Utility.hpp"
+
 #include "Test.hpp"
 
 #include "OpenMP/SPHSimulation.hpp"
 #include "Serial/SPHSimulation.hpp"
 
 #include "Visualizers/FileExporter.hpp"
+
+#ifndef DISABLE_UI 
 #include "Visualizers/ImGuiViewer.hpp"
+#endif
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
@@ -18,9 +22,6 @@
 
 #include <cstring>
 
-#include "CUDA/Test.cuh"
-
-
 #define SIZE 2
 
 void ParseArgs(int argc, char** argv);
@@ -29,12 +30,6 @@ void ParseArgs(int argc, char** argv);
 // Main code
 int main(int argc, char** argv)
 {
-#ifdef HAS_CUDA
-	Test();
-#else
-	std::cout << "NO CUDA\n";
-#endif
-
 	ParseArgs(argc, argv);
 	
 	// omp_set_num_threads(8);
