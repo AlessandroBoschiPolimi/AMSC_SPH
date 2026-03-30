@@ -105,60 +105,83 @@ inline void SPHSimulation<D, Particles>::Start()
 	std::cout << "Start!\n";
 	FindBounds();
 	SplitParticles();
-	while (this->m_Time < this->m_Params.FinalTime)
-		Step();
+	#pragma omp parallel
+	{
+		while (this->m_Time < this->m_Params.FinalTime)
+			Step();
+	}
 }
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::Step()
 {
-	right_ghost_indices.clear();
-	left_ghost_indices.clear();
-	m_Particles_ghost.Clear();
-	ExchangeParticlesRight();
-	ExchangeParticlesLeft();
-	ExchangeSizes();
-	FindGhost();
-	UpdateGhost();
-	if (mpi_rank == 0)
-		this->NotifyStartFrame();
-	
-	if (m_Neighbors.size() != m_Particles_local.Size())
+	#pragma omp master
 	{
-		m_Neighbors.clear();
-		m_Neighbors.resize(m_Particles_local.Size());
+		right_ghost_indices.clear();
+		left_ghost_indices.clear();
+		m_Particles_ghost.Clear();
+		ExchangeParticlesRight();
+		ExchangeParticlesLeft();
+		ExchangeSizes();
+		FindGhost();
+		UpdateGhost();
+		if (mpi_rank == 0)
+			this->NotifyStartFrame();
+		
+		if (m_Neighbors.size() != m_Particles_local.Size())
+		{
+			m_Neighbors.clear();
+			m_Neighbors.resize(m_Particles_local.Size());
+		}
 	}
-	
+	#pragma omp barrier
+
 	{
 		stdc::time_point<stdclock> start;
+		#pragma omp master
 		{ start = stdclock::now(); }
+		#pragma omp barrier
 	
 		m_NeighborFinder->InitializeFrame(this);
 		FindAllNeighbors();
 	
+		#pragma omp master
 		{ this->m_Profiling.Neighbors = stdclock::now() - start; }
+		#pragma omp barrier
 	}
 	{
 		stdc::time_point<stdclock> start;
+		#pragma omp master
 		{ start = stdclock::now(); }
+		#pragma omp barrier
 	
 		Initialize();
 	
+		#pragma omp master
 		{ this->m_Profiling.Initialize = stdclock::now() - start; }
+		#pragma omp barrier
 	}
 	{
 		stdc::time_point<stdclock> start;
+		#pragma omp master
 		{ start = stdclock::now(); }
+		#pragma omp barrier
 	
 		IterativePressure();
 	
+		#pragma omp master
 		{ this->m_Profiling.IterativePressure = stdclock::now() - start; }
+		#pragma omp barrier
 	}
-	MPI_Barrier(mpi_comm);
-	GatherParticles();
-	this->m_Time += this->m_Params.TimeStep;
-	this->m_Frame++;
-	if (mpi_rank == 0)
-		this->NotifyEndFrame();
+	#pragma omp master
+	{
+		MPI_Barrier(mpi_comm);
+		GatherParticles();
+		this->m_Time += this->m_Params.TimeStep;
+		this->m_Frame++;
+		if (mpi_rank == 0)
+			this->NotifyEndFrame();
+	}
+	#pragma omp barrier
 }
 
 
@@ -166,6 +189,7 @@ inline void SPHSimulation<D, Particles>::Step()
 template <size_t D, ParticleSet<D> Particles>
 inline void SPHSimulation<D, Particles>::FindAllNeighbors()
 {
+	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
 		if (m_Particles_local.Type(i) == SOLID && this->m_Frame > 0)
@@ -186,6 +210,7 @@ inline void SPHSimulation<D, Particles>::Initialize()
 	 */
 	if (this->m_Frame == 0)
 	{
+		#pragma omp for
 		for (int i = 0; i < m_Particles_local.Size(); i++)
 		{
 			if (m_Particles_local.Type(i) == FLUID)
@@ -193,13 +218,16 @@ inline void SPHSimulation<D, Particles>::Initialize()
 			else
 				ComputeBoundaryPsi(i);
 		}
+		#pragma omp single
 		UpdateGhost();
 	}
+	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
 		if (m_Particles_local.Type(i) == FLUID)
 			ComputeAccelerationViscosity(i);
 	}
+	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
 		if (m_Particles_local.Type(i) == FLUID) {
@@ -207,6 +235,7 @@ inline void SPHSimulation<D, Particles>::Initialize()
 			UpdatePositionInitial(i);
 		}
 	}
+	#pragma omp single
 	UpdateGhost();
 }
 template <size_t D, ParticleSet<D> Particles>
@@ -218,6 +247,7 @@ inline void SPHSimulation<D, Particles>::IterativePressure()
 	   and move particles again.
 	 */
 
+	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
 		if (m_Particles_local.Type(i) == SOLID)
@@ -225,18 +255,22 @@ inline void SPHSimulation<D, Particles>::IterativePressure()
 		ComputeDensity(i);
 		ComputePressure(i);
 	}
+	#pragma omp single
 	UpdateGhost();
 	if (this->m_Command.Type != Command<D>::NONE)
 	{
+		#pragma omp for
 		for (int i = 0; i < m_Particles_local.Size(); i++)
 			EvaluateCommand(i);
 	}
+	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
 		if (m_Particles_local.Type(i) == SOLID)
 			continue;
 		ComputeAccelerationPressure(i);
 	}
+	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
 	{
 		if (m_Particles_local.Type(i) == SOLID)
@@ -289,7 +323,6 @@ inline void SPHSimulation<D, Particles>::ComputeDensity(idx_t i)
 		else // Boundary handling
 			density += particle->BoundaryPsi(ind) * W_ij;
 	}
-
 	m_Particles_local.SetDensity(i, density);
 }
 

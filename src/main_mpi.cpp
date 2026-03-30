@@ -28,7 +28,8 @@ MPI_Comm_rank(mpi_comm, &mpi_rank);
 	constexpr size_t Size = 2;
 
 	//mpi::SpatialHashing<Size, Particles> nf;
-	mpi::MortonSorting<Size> nf({ 0.0f, 0.0f}, { 1.0f, 1.0f});
+	//mpi::MortonSorting<Size> nf({ 0.0f, 0.0f}, { 1.0f, 1.0f});
+	mpi::SpatialHashing<Size> nf;
 	mpi::SPHSimulation<Size> sph(&nf);
 	sph.SetRank(mpi_rank, mpi_comm, mpi_size);
 	if (mpi_rank == 0)

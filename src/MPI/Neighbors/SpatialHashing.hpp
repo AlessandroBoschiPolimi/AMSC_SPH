@@ -65,25 +65,42 @@ private:
 template <size_t D, ParticleSet<D> Particles>
 inline void SpatialHashing<D, Particles>::InitializeFrame(SPHSimulation<D, Particles>* sim)
 {
-	m_Sim = sim;
+	const auto& particles_local = sim->GetParticlesLocal();
+	const auto& particles_ghost = sim->GetParticlesGhost();
+	float h = sim->GetSmoothingLength();
+	size_t size = particles_local.Size() + particles_ghost.Size();
 
-	const auto& particles_local = m_Sim->GetParticlesLocal();
-	const auto& particles_ghost = m_Sim->GetParticlesGhost();
-	int size = particles_local.Size() + particles_ghost.Size();
-	float h = m_Sim->GetSmoothingLength();
+	#pragma omp master
+	{
+		m_Sim = sim;
+		m_Grid.clear();
+		m_Grid.reserve(size);
+	}
+	#pragma omp barrier
 
-	m_Grid.clear();
-	m_Grid.reserve(size);
+	grid_t local_grid;
+	local_grid.clear();
+	local_grid.reserve(size / omp_get_num_threads());
 
-	for (size_t i = 0; i < size; ++i) {
+	#pragma omp for
+	for (int i = 0; i < size; i++)
+	{
 		cell_pos_t c;
 		if (i < particles_local.Size())
 			c = GetCellPosition(particles_local.Position(i), h);
 		else
 			c = GetCellPosition(particles_ghost.Position(i - particles_local.Size()), h);
-		m_Grid[c].push_back(i);
+		local_grid[c].push_back(i);
 	}
+
+	#pragma omp critical
+	{
+		for (auto& [cell, vec] : local_grid)
+			m_Grid[cell].insert(m_Grid[cell].end(), vec.begin(), vec.end());
+	}
+	#pragma omp barrier
 }
+
 
 
 template <size_t D, ParticleSet<D> Particles>

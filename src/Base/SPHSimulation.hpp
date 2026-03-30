@@ -22,13 +22,13 @@ namespace base
 struct SPHParams
 {
 	float RestDensity = 1000.0f;
-	float Stiffness = 3e2f;
+	float Stiffness = 1e2f;
 	float Viscosity = 1e-5f;
 	float ViscosityRigid = 5e-3f;
 	float TimeStep = 0.0002f;
-	float SmoothingLength = 0.007f;
+	float SmoothingLength = 0.0035f;
 	float PressureTol = 1e-2f;
-	float FinalTime = 100.0;
+	float FinalTime = 10.0;
 };
 
 struct SPHProfiling

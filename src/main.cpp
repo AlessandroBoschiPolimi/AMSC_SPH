@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 	
 	// omp_set_num_threads(8);
 	std::cout << "OpenMP Max Threads: " << omp_get_max_threads() << '\n';
-	Test_2D_Pascal_OpenMP_Morton();
+	Test_2D_OpenMP_Hashing();
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();
 
