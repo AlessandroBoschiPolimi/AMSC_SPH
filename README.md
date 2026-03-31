@@ -20,10 +20,12 @@ Use the following cmake flag to exclude UI files from the compilation
 ## Running Examples
 
 It's possible to execute the already available simulations using the following command line parameters
+- `-example`
 - `-d <2 | 3>`: simulation dimension, either 2D or 3D
 - `-par <serial | openmp | mpi>`: parallelization method
         - `-init <box | tray | TODO>`: initial state of the particles, see [Defining Custom Simulation](#defining-custom-simulation) for further details
 - `-nf <hash | morton>`: strategy to find particle neighbors, either spatial hashing or morton sorting
+- `-layout <AoS | SoA | hybrid>`: memory layout for collections of particles, see [Particles Memory Layout](#particles-memory-layout) for more info
 - `[-file <filename> <xyz | vtu | bvtu>]`: if present, writes particle state to a file with format ".xyz", ".vtu" or ".vtu" with binary encoding, and name `filename-{frame number}`
 - `[-ui]`: if present, use realtime visualization (only for 2D)
 - `[--omp-threads <num>]`:

@@ -75,11 +75,11 @@ void ParseArgs(int argc, char** argv)
 void ParseExamplesArgs(int argc, char** argv)
 {
 	int size = 2, par = 0, init = 0, nf = 0, layout = 0;
-	bool file = false, ui = false;
+	bool file = false, ui = true;
 	std::string filename;
 	ExportFormat fileformat = ExportFormat::VTU_01;
 
-	bool run_example = false;
+	bool run_example = true;
 
 	for (int i = 1; i < argc; true)
 	{
@@ -117,6 +117,26 @@ void ParseExamplesArgs(int argc, char** argv)
 				par = 2;
 			else {
 				std::cerr << "Provide either 'serial', 'openmp' or 'mpi' after flag '-par'";
+				exit(1);
+			}
+		}
+		else if (std::strcmp(line, "-layout") == 0)
+		{
+			if (i >= argc)
+			{
+				std::cerr << "Provide either 'AoS', 'SoA' or 'hybrid' after flag '-layout'";
+				exit(1);
+			}
+
+			line = argv[i++];
+			if (std::strcmp(line, "AoS") == 0)
+				par = 0;
+			else if (std::strcmp(line, "SoA") == 0)
+				par = 1;
+			else if (std::strcmp(line, "hybrid") == 0)
+				par = 2;
+			else {
+				std::cerr << "Provide either 'AoS', 'SoA' or 'hybrid' after flag '-layout'";
 				exit(1);
 			}
 		}
@@ -205,22 +225,32 @@ void ParseExamplesArgs(int argc, char** argv)
 			int mpi_rank;
 			MPI_Comm_rank(mpi_comm, &mpi_rank);
 
+			#ifndef DISABLE_UI
+			ImGuiViewer<ParticleAoS<Size>> imguiViewer;
+			#endif
+			FileExporter<Size, ParticleAoS<Size>> exporter;
+
 			SimInitializer<Size, ParticleAoS<Size>>* initp;
 
 			switch (init)
 			{
-			default: initp = new BoxInitializer<Size, ParticleAoS<Size>>();
+			default: initp = new BoxInitializer<Size, ParticleAoS<Size>>(); break;
 			}
 
 			mpi::NeighborFinder<Size>* nfp;
 
 			switch (nf)
 			{
-			case 0: nfp = new mpi::SpatialHashing<Size>();
-			default: nfp = new mpi::MortonSorting<Size>(initp->GetDomain().first, initp->GetDomain().second);
+			case 0: nfp = new mpi::SpatialHashing<Size>(); break;
+			default: nfp = new mpi::MortonSorting<Size>(initp->GetDomain().first, initp->GetDomain().second); break;
 			}
 
 			mpi::SPHSimulation<Size> sim(nfp);
+
+			if (nf == 0)
+				sim.SetName("MPI AoS Hashing");
+			else
+				sim.SetName("MPI AoS Morton");
 
 			sim.SetRank(mpi_rank, mpi_comm, mpi_size);
 			if (mpi_rank == 0)
@@ -230,16 +260,15 @@ void ParseExamplesArgs(int argc, char** argv)
 				#ifndef DISABLE_UI
 				if (ui)
 				{
-					ImGuiViewer<ParticleAoS<Size>> imguiViewer;
 					sim.AddObserver(&imguiViewer);
 					imguiViewer.Start();
 				}
 				#endif
 				if (file)
 				{
-					FileExporter<Size, ParticleAoS<Size>> exporter;
 					exporter.SetBaseName(filename);
 					exporter.SetFormat(fileformat);
+					sim.AddObserver(&exporter);
 				}
 			}
 
@@ -254,16 +283,19 @@ void ParseExamplesArgs(int argc, char** argv)
 
 		else
 		{
-
 			if (layout == 0)
 			{
 				using Particles = ParticleAoS<Size>;
+				#ifndef DISABLE_UI
+				ImGuiViewer<Particles> imguiViewer;
+				#endif
+				FileExporter<Size, Particles> exporter;
 
 				SimInitializer<Size, Particles>* initp;
 
 				switch (init)
 				{
-				default: initp = new BoxInitializer<Size, Particles>();
+				default: initp = new BoxInitializer<Size, Particles>(); break;
 				}
 
 				if (par == 0)
@@ -272,26 +304,31 @@ void ParseExamplesArgs(int argc, char** argv)
 
 					switch (nf)
 					{
-					case 0: nfp = new serial::SpatialHashing<Size, Particles>();
-					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second);
+					case 0: nfp = new serial::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
 					}
 
 					serial::SPHSimulation<Size, Particles> sim(nfp);
+					
+					if (nf == 0)
+						sim.SetName("Serial AoS Hashing");
+					else
+						sim.SetName("Serial AoS Morton");
+					
 					sim.InitializeFluid(initp);
 
 					if (ui)
 					{
 						#ifndef DISABLE_UI
-						ImGuiViewer<Particles> imguiViewer;
 						sim.AddObserver(&imguiViewer);
 						imguiViewer.Start();
 						#endif
 					}
 					if (file)
 					{
-						FileExporter<Size, Particles> exporter;
 						exporter.SetBaseName(filename);
 						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
 					}
 
 					sim.Start();
@@ -305,26 +342,219 @@ void ParseExamplesArgs(int argc, char** argv)
 
 					switch (nf)
 					{
-					case 0: nfp = new openmp::SpatialHashing<Size, Particles>();
-					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second);
+					case 0: nfp = new openmp::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
 					}
 
 					openmp::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("OMP AoS Hashing");
+					else
+						sim.SetName("OMP AoS Morton");
+
 					sim.InitializeFluid(initp);
 
 					if (ui)
 					{
 						#ifndef DISABLE_UI
-						ImGuiViewer<Particles> imguiViewer;
 						sim.AddObserver(&imguiViewer);
 						imguiViewer.Start();
 						#endif
 					}
 					if (file)
 					{
-						FileExporter<Size, Particles> exporter;
 						exporter.SetBaseName(filename);
 						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				delete initp;
+			}
+			
+			else if (layout == 1)
+			{
+				using Particles = ParticleSoA<Size>;
+				#ifndef DISABLE_UI
+				ImGuiViewer<Particles> imguiViewer;
+				#endif
+				FileExporter<Size, Particles> exporter;
+
+				SimInitializer<Size, Particles>* initp;
+
+				switch (init)
+				{
+				default: initp = new BoxInitializer<Size, Particles>(); break;
+				}
+
+				if (par == 0)
+				{
+					serial::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new serial::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					serial::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("Serial SoA Hashing");
+					else
+						sim.SetName("Serial SoA Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (ui)
+					{
+						#ifndef DISABLE_UI
+						sim.AddObserver(&imguiViewer);
+						imguiViewer.Start();
+						#endif
+					}
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				else if (par == 1)
+				{
+					openmp::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new openmp::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					openmp::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("OMP SoA Hashing");
+					else
+						sim.SetName("OMP SoA Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (ui)
+					{
+						#ifndef DISABLE_UI
+						sim.AddObserver(&imguiViewer);
+						imguiViewer.Start();
+						#endif
+					}
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				delete initp;
+			}
+
+			else if (layout == 2)
+			{
+				using Particles = ParticleHybrid<Size>;
+				#ifndef DISABLE_UI
+				ImGuiViewer<Particles> imguiViewer;
+				#endif
+				FileExporter<Size, Particles> exporter;
+
+				SimInitializer<Size, Particles>* initp;
+
+				switch (init)
+				{
+				default: initp = new BoxInitializer<Size, Particles>(); break;
+				}
+
+				if (par == 0)
+				{
+					serial::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new serial::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					serial::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("Serial Hybrid Hashing");
+					else
+						sim.SetName("Serial Hybrid Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (ui)
+					{
+						#ifndef DISABLE_UI
+						sim.AddObserver(&imguiViewer);
+						imguiViewer.Start();
+						#endif
+					}
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				else if (par == 1)
+				{
+					openmp::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new openmp::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					openmp::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("OMP Hybrid Hashing");
+					else
+						sim.SetName("OMP Hybrid Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (ui)
+					{
+						#ifndef DISABLE_UI
+						sim.AddObserver(&imguiViewer);
+						imguiViewer.Start();
+						#endif
+					}
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
 					}
 
 					sim.Start();
@@ -351,22 +581,29 @@ void ParseExamplesArgs(int argc, char** argv)
 			int mpi_rank;
 			MPI_Comm_rank(mpi_comm, &mpi_rank);
 
+			FileExporter<Size, ParticleAoS<Size>> exporter;
+
 			SimInitializer<Size, ParticleAoS<Size>>* initp;
 
 			switch (init)
 			{
-			default: initp = new TrayInitializer<Size, ParticleAoS<Size>>();
+			default: initp = new TrayInitializer<Size, ParticleAoS<Size>>(); break;
 			}
 
 			mpi::NeighborFinder<Size>* nfp;
 
 			switch (nf)
 			{
-			case 0: nfp = new mpi::SpatialHashing<Size>();
-			default: nfp = new mpi::MortonSorting<Size>(initp->GetDomain().first, initp->GetDomain().second);
+			case 0: nfp = new mpi::SpatialHashing<Size>(); break;
+			default: nfp = new mpi::MortonSorting<Size>(initp->GetDomain().first, initp->GetDomain().second); break;
 			}
 
 			mpi::SPHSimulation<Size> sim(nfp);
+
+			if (nf == 0)
+				sim.SetName("MPI AoS Hashing");
+			else
+				sim.SetName("MPI AoS Morton");
 
 			sim.SetRank(mpi_rank, mpi_comm, mpi_size);
 			if (mpi_rank == 0)
@@ -375,9 +612,9 @@ void ParseExamplesArgs(int argc, char** argv)
 				
 				if (file)
 				{
-					FileExporter<Size, ParticleAoS<Size>> exporter;
 					exporter.SetBaseName(filename);
 					exporter.SetFormat(fileformat);
+					sim.AddObserver(&exporter);
 				}
 			}
 
@@ -396,12 +633,13 @@ void ParseExamplesArgs(int argc, char** argv)
 			if (layout == 0)
 			{
 				using Particles = ParticleAoS<Size>;
+				FileExporter<Size, Particles> exporter;
 
 				SimInitializer<Size, Particles>* initp;
 
 				switch (init)
 				{
-				default: initp = new TrayInitializer<Size, Particles>();
+				default: initp = new TrayInitializer<Size, Particles>(); break;
 				}
 
 				if (par == 0)
@@ -410,18 +648,24 @@ void ParseExamplesArgs(int argc, char** argv)
 
 					switch (nf)
 					{
-					case 0: nfp = new serial::SpatialHashing<Size, Particles>();
-					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second);
+					case 0: nfp = new serial::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
 					}
 
 					serial::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("Serial AoS Hashing");
+					else
+						sim.SetName("Serial AoS Morton");
+
 					sim.InitializeFluid(initp);
 
 					if (file)
 					{
-						FileExporter<Size, Particles> exporter;
 						exporter.SetBaseName(filename);
 						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
 					}
 
 					sim.Start();
@@ -435,18 +679,178 @@ void ParseExamplesArgs(int argc, char** argv)
 
 					switch (nf)
 					{
-					case 0: nfp = new openmp::SpatialHashing<Size, Particles>();
-					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second);
+					case 0: nfp = new openmp::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
 					}
 
 					openmp::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("OMP AoS Hashing");
+					else
+						sim.SetName("OMP AoS Morton");
+
 					sim.InitializeFluid(initp);
 
 					if (file)
 					{
-						FileExporter<Size, Particles> exporter;
 						exporter.SetBaseName(filename);
 						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				delete initp;
+			}
+
+			else if (layout == 1)
+			{
+				using Particles = ParticleSoA<Size>;
+				FileExporter<Size, Particles> exporter;
+
+				SimInitializer<Size, Particles>* initp;
+
+				switch (init)
+				{
+				default: initp = new TrayInitializer<Size, Particles>(); break;
+				}
+
+				if (par == 0)
+				{
+					serial::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new serial::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					serial::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("Serial SoA Hashing");
+					else
+						sim.SetName("Serial SoA Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				else if (par == 1)
+				{
+					openmp::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new openmp::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					openmp::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("OMP SoA Hashing");
+					else
+						sim.SetName("OMP SoA Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				delete initp;
+			}
+
+			else if (layout == 2)
+			{
+				using Particles = ParticleHybrid<Size>;
+				FileExporter<Size, Particles> exporter;
+
+				SimInitializer<Size, Particles>* initp;
+
+				switch (init)
+				{
+				default: initp = new TrayInitializer<Size, Particles>(); break;
+				}
+
+				if (par == 0)
+				{
+					serial::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new serial::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new serial::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					serial::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("Serial Hybrid Hashing");
+					else
+						sim.SetName("Serial Hybrid Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
+					}
+
+					sim.Start();
+
+					delete nfp;
+				}
+
+				else if (par == 1)
+				{
+					openmp::NeighborFinder<Size, Particles>* nfp;
+
+					switch (nf)
+					{
+					case 0: nfp = new openmp::SpatialHashing<Size, Particles>(); break;
+					default: nfp = new openmp::MortonSorting<Size, Particles>(initp->GetDomain().first, initp->GetDomain().second); break;
+					}
+
+					openmp::SPHSimulation<Size, Particles> sim(nfp);
+
+					if (nf == 0)
+						sim.SetName("OMP Hybrid Hashing");
+					else
+						sim.SetName("OMP Hybrid Morton");
+
+					sim.InitializeFluid(initp);
+
+					if (file)
+					{
+						exporter.SetBaseName(filename);
+						exporter.SetFormat(fileformat);
+						sim.AddObserver(&exporter);
 					}
 
 					sim.Start();
