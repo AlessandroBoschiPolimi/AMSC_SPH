@@ -84,7 +84,7 @@ void ParseExamplesArgs(int argc, char** argv)
 	for (int i = 1; i < argc; true)
 	{
 		char* line = argv[i++];
-		if (std::strcmp(line, "-example"))
+		if (std::strcmp(line, "-example") == 0)
 			run_example = true;
 		else if (std::strcmp(line, "-d") == 0)
 		{
@@ -168,9 +168,9 @@ void ParseExamplesArgs(int argc, char** argv)
 
 			line = argv[i++];
 			if (std::strcmp(line, "hash") == 0)
-				init = 0;
+				nf = 0;
 			else if (std::strcmp(line, "morton") == 0)
-				init = 1;
+				nf = 1;
 			else {
 				std::cerr << "Provide either 'hash', or 'morton' after flag '-nf'";
 				exit(1);
