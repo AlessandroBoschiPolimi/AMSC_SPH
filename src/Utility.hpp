@@ -402,29 +402,14 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& data)
 
 template <typename T>
 std::ostream& operator<<(std::ostream& out, const coord<T, 2>& c) {
-#ifdef HAS_CPP20
-	std::format_to(std::ostream_iterator<char>(std::cout), "[{}:{}]", c.x, c.y);
-	return out;
-#else
 	return out << '[' << c.x << ':' << c.y << ']';
-#endif
 }
 template <typename T>
 std::ostream& operator<<(std::ostream& out, const coord<T, 3>& c) {
-#ifdef HAS_CPP20
-	std::format_to(std::ostream_iterator<char>(std::cout), "[{}:{}:{}]", c.x, c.y, c.z);
-	return out;
-#else
 	return out << '[' << c.x << ':' << c.y << ':' << c.z << ']';
-#endif
 }
 template <typename T>
 std::ostream& operator<<(std::ostream& out, const coord<T, 4>& c) {
-#ifdef HAS_CPP20
-	std::format_to(std::ostream_iterator<char>(std::cout), "[{}:{}:{}:{}]", c.x, c.y, c.z, c.w);
-	return out;
-#else
 	return out << '[' << c.x << ':' << c.y << ':' << c.z << ':' << c.w << ']';
-#endif
 }
 // ################################################################## LOGGING ##################################################################

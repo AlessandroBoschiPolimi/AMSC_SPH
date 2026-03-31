@@ -4,19 +4,25 @@
 
 void writeXYZ(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles)
 {
-	std::ofstream out(std::format("{}-{}.xyz", basename, frame));
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".xyz";
+	std::ofstream out(oss.str());
 	for (auto& p : particles)
 		out << p.Position.x << " " << p.Position.y << " " << p.Position.z << "\n";
 }
 void writeXYZ(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("{}-{}.xyz", basename, frame));
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".xyz";
+	std::ofstream out(oss.str());
 	for (auto& p : particles)
 		out << p.Position.x << " " << p.Position.y << " " << 0 << "\n";
 }
 
 void writeVTU(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles) {
-	std::ofstream out(std::format("{}-{}.vtu", basename, frame));
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".vtu";
+	std::ofstream out(oss.str()); 
 	const size_t N = particles.size();
 
 	out << "<?xml version=\"1.0\"?>\n";
@@ -85,7 +91,9 @@ void writeVTU(const std::string& basename, const int frame, const std::vector<Pa
 }
 void writeVTU(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("{}-{}.vtu", basename, frame));
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".vtu";
+	std::ofstream out(oss.str());
 	const size_t N = particles.size();
 
 	out << "<?xml version=\"1.0\"?>\n";
@@ -159,7 +167,9 @@ void writeRaw(std::ofstream& out, const T& value) {
 }
 
 void writeVTUBinary(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles) {
-	std::ofstream out(std::format("{}-{}.vtu", basename, frame), std::ios::binary);
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".vtu";
+	std::ofstream out(oss.str(), std::ios::binary);
 	if (!out) return;
 
 	const uint32_t N = static_cast<uint32_t>(particles.size());
@@ -279,7 +289,9 @@ void writeVTUBinary(const std::string& basename, const int frame, const std::vec
 }
 void writeVTUBinary(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("{}-{}.vtu", basename, frame), std::ios::binary);
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".vtu";
+	std::ofstream out(oss.str(), std::ios::binary);
 	if (!out) return;
 
 	const uint32_t N = static_cast<uint32_t>(particles.size());
@@ -401,7 +413,9 @@ void writeVTUBinary(const std::string& basename, const int frame, const std::vec
 
 void writeForComparison(const std::string& basename, const int frame, const std::vector<Particle<3>>& particles)
 {
-	std::ofstream out(std::format("{}-{}.mycoolextension", basename, frame));
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".mycoolextension";
+	std::ofstream out(oss.str());
 	out << particles.size() << '\n';
 	for (auto& p : particles)
 	{
@@ -416,7 +430,9 @@ void writeForComparison(const std::string& basename, const int frame, const std:
 }
 void writeForComparison(const std::string& basename, const int frame, const std::vector<Particle<2>>& particles)
 {
-	std::ofstream out(std::format("{}-{}.mycoolextension", basename, frame));
+	std::ostringstream oss;
+	oss << basename << '-' << frame << ".mycoolextension";
+	std::ofstream out(oss.str());
 	out << particles.size() << '\n';
 	for (auto& p : particles)
 	{

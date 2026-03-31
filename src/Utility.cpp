@@ -19,16 +19,12 @@ void print_time(const stdc::nanoseconds& time, std::ostream& out)
 		unit = "us";
 	}
 
-#ifdef HAS_CPP20
-	out << std::format("{:.2f}{}", value, unit);
-#else
 	std::ios oldState(nullptr);
 	oldState.copyfmt(out);
 
 	out << std::fixed << std::setprecision(2) << value << unit;
 
 	out.copyfmt(oldState);
-#endif
 }
 
 

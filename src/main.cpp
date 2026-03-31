@@ -74,9 +74,9 @@ void ParseArgs(int argc, char** argv)
 
 void ParseExamplesArgs(int argc, char** argv)
 {
-	int size = 2, par = 0, init = 0, nf = 0, layout = 0;
+	int size = 2, par = 1, init = 0, nf = 1, layout = 0;
 	bool file = false, ui = false;
-	std::string filename;
+	std::string filename = "base";
 	ExportFormat fileformat = ExportFormat::VTU_01;
 
 	bool run_example = false;

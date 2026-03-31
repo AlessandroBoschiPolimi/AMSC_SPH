@@ -114,8 +114,16 @@ void CompareSeries(const std::string& baseA, const std::string& baseB)
 	u64 frame = 1;
 	while (true)
 	{
-		std::string fileA = std::format("{}-{}.mycoolextension", baseA, frame);
-		std::string fileB = std::format("{}-{}.mycoolextension", baseB, frame);
+		std::string fileA, fileB;
+
+		{
+			std::ostringstream oss;
+			oss << baseA << '-' << frame << ".mycoolextension";
+			fileA = oss.str();
+			oss.str("");
+			oss << baseB << '-' << frame << ".mycoolextension";
+			fileB = oss.str();
+		}
 
 		if (!std::filesystem::exists(fileA) || !std::filesystem::exists(fileB))
 			break;
