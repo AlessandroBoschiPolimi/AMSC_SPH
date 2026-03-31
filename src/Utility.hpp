@@ -74,7 +74,6 @@ Lasciate ogne ';', voi ch'intrate.
 
 #ifdef HAS_CPP20
 #include <ranges>
-#include <format>
 #endif
 #ifdef HAS_CPP17
 #include <filesystem>

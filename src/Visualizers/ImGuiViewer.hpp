@@ -1,4 +1,5 @@
 #pragma once
+#ifndef DISABLE_UI
 #include "Observer.hpp"
 #include "Utility.hpp"
 
@@ -88,3 +89,4 @@ private:
 };
 
 #include "ImGuiViewer_Impl.hpp"
+#endif

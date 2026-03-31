@@ -1,5 +1,4 @@
 #include "Utility.hpp"
-#include <format>
 
 #include "Particle.hpp"
 

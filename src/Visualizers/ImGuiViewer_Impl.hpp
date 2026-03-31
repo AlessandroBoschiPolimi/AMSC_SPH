@@ -1,3 +1,4 @@
+#ifndef DISABLE_UI
 #include <format>
 
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
@@ -482,3 +483,4 @@ bool ImGuiViewer<Particles>::Init()
 
 	return true;
 }
+#endif
