@@ -22,7 +22,7 @@ Use the following cmake flag to exclude UI files from the compilation
 It's possible to execute the already available simulations using the following command line parameters
 - `-d <2 | 3>`: simulation dimension, either 2D or 3D
 - `-par <serial | openmp | mpi>`: parallelization method
-- `-init <box | tray | TODO>`: initial state of the particles, see **Defining Custom Simulation** for further details
+        - `-init <box | tray | TODO>`: initial state of the particles, see [Defining Custom Simulation](#defining-custom-simulation) for further details
 - `-nf <hash | morton>`: strategy to find particle neighbors, either spatial hashing or morton sorting
 - `[-file <filename> <xyz | vtu | bvtu>]`: if present, writes particle state to a file with format ".xyz", ".vtu" or ".vtu" with binary encoding, and name `filename-{frame number}`
 - `[-ui]`: if present, use realtime visualization (only for 2D)
@@ -62,7 +62,7 @@ a corresponding implementation of the class `SPHSimulation`, extending and overr
 methods from the base class `base::SPHSimulation`.
 
 Each parallelization method also defines custom implementations of the neighbor finding strategies.
-See **Neighbor Finding Method**
+See [Neighbor Finding Method](#neighbor-finding-method)
 
 > Note: a simulation with a certain parallelization cannot be combined with a neighbor finding strategy
 with a different parallelization, as they make different assumptions on how they are used.
@@ -85,7 +85,7 @@ The available simulation parameters relevant to the system evolution are those p
 and they include timestep or physical particle properties.
 The simulation parameters can be specified via the function `sim.SetParams(params)`.
 
-They can be updated during the execution of the simulation, between frames. See **Simulation Progress Observer** section.
+They can be updated during the execution of the simulation, between frames. See [Simulation Progress Observer](#simulation-progress-observer) section.
 
 ### Initial State of the Particles
 
