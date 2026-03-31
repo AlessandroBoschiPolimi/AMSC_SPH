@@ -38,8 +38,8 @@ struct morton_sorting_data_impl<3> {
 };
 
 
-template <size_t D, ParticleSet<D> Particles =ParticleAoS<D>>
-class MortonSorting : public NeighborFinder<D, Particles>
+template <size_t D>
+class MortonSorting : public NeighborFinder<D>
 {
 public:
 	using       idx_t = Particle<D>::idx_t;
@@ -47,6 +47,7 @@ public:
 	using  cell_pos_t = coord<i32, D>;
 	using cell_upos_t = coord<u32, D>;
 
+	using Particles = ParticleAoS<D>;
 
 public:
 	MortonSorting(const vec_t& domain_min, const vec_t& domain_max) : m_DomainMin(domain_min), m_DomainMax(domain_max) {}
@@ -54,7 +55,7 @@ public:
 
 	void Find(idx_t i, std::vector<idx_t>& out) override;
 
-	void InitializeFrame(SPHSimulation<D, Particles>* sim) override;
+	void InitializeFrame(SPHSimulation<D>* sim) override;
 
 	static cell_pos_t GetCellPosition(const vec_t& p, const float h);
 	static u64 ExpandBits(u32 v);
@@ -66,7 +67,7 @@ private:
 	bool OutsideDomain(const cell_pos_t& pos);
 
 private:
-	SPHSimulation<D, Particles>* m_Sim = nullptr;
+	SPHSimulation<D>* m_Sim = nullptr;
 
 	const vec_t m_DomainMin, m_DomainMax;
 	cell_pos_t m_MinGrid, m_MaxGrid;
@@ -87,8 +88,8 @@ private:
 };
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void MortonSorting<D, Particles>::InitializeFrame(SPHSimulation<D, Particles>* sim)
+template <size_t D>
+inline void MortonSorting<D>::InitializeFrame(SPHSimulation<D>* sim)
 {
 	m_Sim = sim;
 
@@ -186,8 +187,8 @@ inline void MortonSorting<D, Particles>::InitializeFrame(SPHSimulation<D, Partic
 }
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline bool MortonSorting<D, Particles>::OutsideDomain(const cell_pos_t& pos)
+template <size_t D>
+inline bool MortonSorting<D>::OutsideDomain(const cell_pos_t& pos)
 {
 	if constexpr (D == 2)
 		return	pos.x < m_MinGrid.x || pos.x > m_MaxGrid.x ||
@@ -201,8 +202,8 @@ inline bool MortonSorting<D, Particles>::OutsideDomain(const cell_pos_t& pos)
 }
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void MortonSorting<D, Particles>::Find(idx_t i, std::vector<idx_t>& out)
+template <size_t D>
+inline void MortonSorting<D>::Find(idx_t i, std::vector<idx_t>& out)
 {
 	out.clear();
 
@@ -261,8 +262,8 @@ inline void MortonSorting<D, Particles>::Find(idx_t i, std::vector<idx_t>& out)
 	}
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline MortonSorting<D, Particles>::cell_pos_t MortonSorting<D, Particles>::GetCellPosition(const vec_t& p, const float h)
+template <size_t D>
+inline MortonSorting<D>::cell_pos_t MortonSorting<D>::GetCellPosition(const vec_t& p, const float h)
 {
 	if constexpr (D == 2)
 	{
@@ -284,8 +285,8 @@ inline MortonSorting<D, Particles>::cell_pos_t MortonSorting<D, Particles>::GetC
 }
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline u64 MortonSorting<D, Particles>::ExpandBits(u32 v)
+template <size_t D>
+inline u64 MortonSorting<D>::ExpandBits(u32 v)
 {
 	if constexpr (D == 2)
 	{
@@ -308,8 +309,8 @@ inline u64 MortonSorting<D, Particles>::ExpandBits(u32 v)
 	else static_assert(false);
 	return v;
 }
-template <size_t D, ParticleSet<D> Particles>
-inline u64 MortonSorting<D, Particles>::MortonCode(const cell_upos_t& pos)
+template <size_t D>
+inline u64 MortonSorting<D>::MortonCode(const cell_upos_t& pos)
 {
 	if constexpr (D == 2)
 		return ExpandBits(pos.x) | (ExpandBits(pos.y) << 1);

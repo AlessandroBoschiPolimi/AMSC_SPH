@@ -82,7 +82,7 @@ private:
 
 	enum ColoringParam
 	{
-		SUBDOMAIN, PRESSURE, VELOCITY
+		PRESSURE, VELOCITY
 	};
 	ColoringParam m_ColoringParam = VELOCITY;
 };

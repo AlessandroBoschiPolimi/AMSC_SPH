@@ -6,17 +6,18 @@
 namespace mpi
 {
 
-template <size_t D, ParticleSet<D> Particles = ParticleAoS<D>>
-class SPHSimulation : public base::SPHSimulation<D, Particles>
+template <size_t D>
+class SPHSimulation : public base::SPHSimulation<D, ParticleAoS<D>>
 {
 public:
 	using idx_t = Particle<D>::idx_t;
 	using vec_t = Particle<D>::vec_t;
+	using Particles = ParticleAoS<D>;
 
-	friend class NeighborFinder<D, Particles>;
+	friend class NeighborFinder<D>;
 
 
-	SPHSimulation(NeighborFinder<D, Particles>* nf);
+	SPHSimulation(NeighborFinder<D>* nf);
 	virtual ~SPHSimulation() override { }
 
 	void Start() override;
@@ -67,7 +68,7 @@ protected:
 private:
 	Particles m_Particles;
 	std::vector<std::vector<idx_t>> m_Neighbors;
-	NeighborFinder<D, Particles>* m_NeighborFinder = nullptr;
+	NeighborFinder<D>* m_NeighborFinder = nullptr;
 
 	Kernel<D> W_Ker;
 	//MPI variables
@@ -92,15 +93,15 @@ private:
 
  // TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
 
-template <size_t D, ParticleSet<D> Particles>
-inline SPHSimulation<D, Particles>::SPHSimulation(NeighborFinder<D, Particles>* nf)
+template <size_t D>
+inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf)
 	: base::SPHSimulation<D, Particles>(), m_NeighborFinder(nf), W_Ker(this->m_Params.SmoothingLength / 2.0f)
 { }
 
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::Start()
+template <size_t D>
+inline void SPHSimulation<D>::Start()
 {
 	std::cout << "Start!\n";
 	FindBounds();
@@ -111,8 +112,8 @@ inline void SPHSimulation<D, Particles>::Start()
 			Step();
 	}
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::Step()
+template <size_t D>
+inline void SPHSimulation<D>::Step()
 {
 	#pragma omp master
 	{
@@ -186,8 +187,8 @@ inline void SPHSimulation<D, Particles>::Step()
 
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::FindAllNeighbors()
+template <size_t D>
+inline void SPHSimulation<D>::FindAllNeighbors()
 {
 	#pragma omp for
 	for (int i = 0; i < m_Particles_local.Size(); i++)
@@ -198,8 +199,8 @@ inline void SPHSimulation<D, Particles>::FindAllNeighbors()
 	}
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::Initialize()
+template <size_t D>
+inline void SPHSimulation<D>::Initialize()
 {
 	/*
 	 * Non-iterative part of the timestep
@@ -238,8 +239,8 @@ inline void SPHSimulation<D, Particles>::Initialize()
 	#pragma omp single
 	UpdateGhost();
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::IterativePressure()
+template <size_t D>
+inline void SPHSimulation<D>::IterativePressure()
 {
 	/*
 	 * Use simple scheme with splitting
@@ -281,8 +282,8 @@ inline void SPHSimulation<D, Particles>::IterativePressure()
 }
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ComputeBoundaryPsi(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::ComputeBoundaryPsi(idx_t i)
 {
 	/*
 	 * Computes 'mass' of the boundary particles used
@@ -300,8 +301,8 @@ inline void SPHSimulation<D, Particles>::ComputeBoundaryPsi(idx_t i)
 	// Clamp the values in case the volume is too small
 	m_Particles_local.SetBoundaryPsi(i, (V > 1.0e-2f) ? this->m_Params.RestDensity / V : 0);
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ComputeDensity(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::ComputeDensity(idx_t i)
 {
 	/*
 	 * Simple function to compute density
@@ -326,8 +327,8 @@ inline void SPHSimulation<D, Particles>::ComputeDensity(idx_t i)
 	m_Particles_local.SetDensity(i, density);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ComputePressure(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::ComputePressure(idx_t i)
 {
 	/*
 	 * (Andrew) Tait equation
@@ -341,8 +342,8 @@ inline void SPHSimulation<D, Particles>::ComputePressure(idx_t i)
 	m_Particles_local.SetPressure(i, pressure);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ComputeAccelerationViscosity(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
 {
 	/*
 	 * Computes acceleration dues to viscosity from [1]
@@ -383,8 +384,8 @@ inline void SPHSimulation<D, Particles>::ComputeAccelerationViscosity(idx_t i)
 	m_Particles_local.SetAccelerationViscosity(i, acc);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ComputeAccelerationPressure(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
 {
 	/*
 	 * Computes acceleration dues to viscosity from [2]
@@ -415,15 +416,15 @@ inline void SPHSimulation<D, Particles>::ComputeAccelerationPressure(idx_t i)
 	m_Particles_local.SetAccelerationPressure(i, acc);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::UpdatePositionInitial(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::UpdatePositionInitial(idx_t i)
 {
 	// Update position due to viscosity and gravity
 	auto pi = m_Particles_local.Position(i);
 	m_Particles_local.SetPosition(i, pi + this->m_Params.TimeStep * m_Particles_local.Velocity(i));
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::UpdatePositionIteration(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::UpdatePositionIteration(idx_t i)
 {
 	// Update position due to pressure
 	auto pi = m_Particles_local.Position(i);
@@ -431,16 +432,16 @@ inline void SPHSimulation<D, Particles>::UpdatePositionIteration(idx_t i)
 		  m_Particles_local.AccelerationPressure(i);
 	m_Particles_local.SetPosition(i, pi);
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::UpdateVelocityInitial(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::UpdateVelocityInitial(idx_t i)
 {
 	// Update velocity due to viscosity and gravity
 	auto vi = m_Particles_local.Velocity(i);
 	vi += this->m_Params.TimeStep * (m_Particles_local.AccelerationGravity(i) + m_Particles_local.AccelerationViscosity(i));
 	m_Particles_local.SetVelocity(i, vi);
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::UpdateVelocityIteration(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::UpdateVelocityIteration(idx_t i)
 {
 	// Update velocity due to pressure
 	auto vi = m_Particles_local.Velocity(i);
@@ -449,8 +450,8 @@ inline void SPHSimulation<D, Particles>::UpdateVelocityIteration(idx_t i)
 }
 
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::EvaluateCommand(idx_t i)
+template <size_t D>
+inline void SPHSimulation<D>::EvaluateCommand(idx_t i)
 {
 	float d = Norm(m_Particles_local.Position(i) - this->m_Command.Position);
 	if (d < this->m_Command.Radius)
@@ -461,8 +462,8 @@ inline void SPHSimulation<D, Particles>::EvaluateCommand(idx_t i)
 	}
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::InitializeFluid(const SimInitializer<D, Particles>* init)
+template <size_t D>
+inline void SPHSimulation<D>::InitializeFluid(const SimInitializer<D, Particles>* init)
 {
 	std::cout << "Initializing " << this->m_Name << '\n';
 	init->Init(m_Particles, this->m_Params.SmoothingLength, this->m_Objects);
@@ -474,8 +475,8 @@ inline void SPHSimulation<D, Particles>::InitializeFluid(const SimInitializer<D,
 *MPI FUNCTIONS
 ************************
 */
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::FindBounds()
+template <size_t D>
+inline void SPHSimulation<D>::FindBounds()
 {
 	if (mpi_rank == 0)
 	{
@@ -516,8 +517,8 @@ inline void SPHSimulation<D, Particles>::FindBounds()
 	1, mpi_comm, MPI_STATUS_IGNORE);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::SplitParticles()
+template <size_t D>
+inline void SPHSimulation<D>::SplitParticles()
 {
 	int size;
 	size_local.resize(mpi_size);
@@ -565,8 +566,8 @@ inline void SPHSimulation<D, Particles>::SplitParticles()
 	MPI_Bcast(size_local.data() , mpi_size , MPI_INT ,
 	0 ,mpi_comm) ;
 }
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::GatherParticles()
+template <size_t D>
+inline void SPHSimulation<D>::GatherParticles()
 {
 	int size, size_ghost;
 	if (mpi_rank == 0)
@@ -591,8 +592,8 @@ inline void SPHSimulation<D, Particles>::GatherParticles()
        	mpi_comm);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ExchangeParticlesLeft()
+template <size_t D>
+inline void SPHSimulation<D>::ExchangeParticlesLeft()
 {
 	//Exchange messages with the left neighbour
 	if (mpi_rank != 0)
@@ -640,8 +641,8 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesLeft()
 
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ExchangeParticlesRight()
+template <size_t D>
+inline void SPHSimulation<D>::ExchangeParticlesRight()
 {
 	//Exchange messages with the left neighbour
 	if (mpi_rank != mpi_size - 1)
@@ -691,8 +692,8 @@ inline void SPHSimulation<D, Particles>::ExchangeParticlesRight()
 
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::FindGhost()
+template <size_t D>
+inline void SPHSimulation<D>::FindGhost()
 {
 	if (mpi_rank != 0)
 	{
@@ -741,8 +742,8 @@ inline void SPHSimulation<D, Particles>::FindGhost()
 
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::ExchangeSizes()
+template <size_t D>
+inline void SPHSimulation<D>::ExchangeSizes()
 {
 	int my_size = m_Particles_local.Size() * sizeof(Particle<D>);
 	MPI_Allgather(
@@ -755,8 +756,8 @@ inline void SPHSimulation<D, Particles>::ExchangeSizes()
     		mpi_comm);
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::PickLocalGhost(idx_t j, idx_t &ind, Particles* &particle)
+template <size_t D>
+inline void SPHSimulation<D>::PickLocalGhost(idx_t j, idx_t &ind, Particles* &particle)
 {
 	if (j < m_Particles_local.Size())
 	{
@@ -771,8 +772,8 @@ inline void SPHSimulation<D, Particles>::PickLocalGhost(idx_t j, idx_t &ind, Par
 	}
 }
 
-template <size_t D, ParticleSet<D> Particles>
-inline void SPHSimulation<D, Particles>::UpdateGhost()
+template <size_t D>
+inline void SPHSimulation<D>::UpdateGhost()
 {
 	m_Particles_ghost.Clear();
 	m_Particles_ghost.Resize(size_ghost_right + size_ghost_left);

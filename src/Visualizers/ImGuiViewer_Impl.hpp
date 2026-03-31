@@ -169,8 +169,8 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 
 	ImGui::Separator();
 	{
-		const char* items[] = { "Subdomain", "Pressure", "Velocity" };
-		static int coloring_param_int = 2;
+		const char* items[] = { "Pressure", "Velocity" };
+		static int coloring_param_int = 1;
 		ImGui::Combo("Coloring Parameter", &coloring_param_int, items, IM_ARRAYSIZE(items));
 		m_ColoringParam = (ColoringParam)coloring_param_int;
 
@@ -253,15 +253,6 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 				1.0f,
 				1.0f
 			);
-		}
-		else if (m_ColoringParam == SUBDOMAIN)
-		{
-			/*SPHSimulation<2>::cell_pos_t cell_pos = SPHSimulation<2>::GetCellPosition(p.Position, m_SimParams.SmoothingLength);
-			color = ImColor::HSV(
-				1.0f - cell_pos.x * m_SimParams.SmoothingLength,
-				1.0f - cell_pos.y * m_SimParams.SmoothingLength,
-				1.0f
-			);*/
 		}
 		else if (m_ColoringParam == VELOCITY)
 		{

@@ -5,10 +5,10 @@
 namespace mpi
 {
 
-template <size_t D, ParticleSet<D> Particles>
+template <size_t D>
 class SPHSimulation;
 
-template <size_t D, ParticleSet<D> Particles>
+template <size_t D>
 class NeighborFinder : public base::NeighborFinder<D>
 {
 public:
@@ -16,7 +16,7 @@ public:
 
 	virtual ~NeighborFinder() override = default;
 
-	virtual void InitializeFrame(SPHSimulation<D, Particles>* sim) {}
+	virtual void InitializeFrame(SPHSimulation<D>* sim) {}
 
 protected:
 
