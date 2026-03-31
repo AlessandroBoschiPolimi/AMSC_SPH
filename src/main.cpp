@@ -75,11 +75,11 @@ void ParseArgs(int argc, char** argv)
 void ParseExamplesArgs(int argc, char** argv)
 {
 	int size = 2, par = 0, init = 0, nf = 0, layout = 0;
-	bool file = false, ui = true;
+	bool file = false, ui = false;
 	std::string filename;
 	ExportFormat fileformat = ExportFormat::VTU_01;
 
-	bool run_example = true;
+	bool run_example = false;
 
 	for (int i = 1; i < argc; true)
 	{
@@ -130,11 +130,11 @@ void ParseExamplesArgs(int argc, char** argv)
 
 			line = argv[i++];
 			if (std::strcmp(line, "AoS") == 0)
-				par = 0;
+				layout = 0;
 			else if (std::strcmp(line, "SoA") == 0)
-				par = 1;
+				layout = 1;
 			else if (std::strcmp(line, "hybrid") == 0)
-				par = 2;
+				layout = 2;
 			else {
 				std::cerr << "Provide either 'AoS', 'SoA' or 'hybrid' after flag '-layout'";
 				exit(1);
