@@ -43,7 +43,7 @@ int main(int argc, char** argv)
 	ParseExamplesArgs(argc, argv);
 	
 	// omp_set_num_threads(8);
-	Test_2D_OpenMP_Hashing();
+	Test_2D_Pipe_OpenMP_Morton();
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();
 

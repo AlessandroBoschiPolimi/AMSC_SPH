@@ -22,7 +22,7 @@ inline void PascalInitializer<2, Particles>::Init(Particles& out, float h, Objec
 	using vec_t = Particle<2>::vec_t;
 
 	float density_wall = 0.002;
-	this->AddSource(obj, { 0.11, 0.8501 }, { 0.18, 0.850 }, out, true, 1, 10, 100, 0.025, true, 80000);
+	this->AddSource(obj, { 0.11, 0.8501 }, { 0.18, 0.850 }, out, true, 1, 10, 0.0002f * 100, 0.025, true, 0.0002f * 80000);
 	
 	this->BuildWallAlongY(out, 0.1 , 0.2, 0.85, density_wall);
 	this->BuildWallAlongY(out, 0.2 , 0.3, 0.85, density_wall);

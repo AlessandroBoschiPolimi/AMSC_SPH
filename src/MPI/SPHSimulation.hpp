@@ -90,9 +90,6 @@ private:
  * [2]https://cg.informatik.uni-freiburg.de/course_notes/sim_10_sph.pdf
  */
 
-
- // TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
-
 template <size_t D>
 inline SPHSimulation<D>::SPHSimulation(NeighborFinder<D>* nf)
 	: base::SPHSimulation<D, Particles>(), m_NeighborFinder(nf), W_Ker(this->m_Params.SmoothingLength / 2.0f)
@@ -355,7 +352,11 @@ inline void SPHSimulation<D>::ComputeAccelerationViscosity(idx_t i)
 	auto di = m_Particles_local.Density(i);
 
 	float sl2 = this->m_Params.SmoothingLength * this->m_Params.SmoothingLength;
-	vec_t acc = vec_t{ 0, 0 };
+	vec_t acc;
+	if constexpr (D == 2)
+		acc = vec_t{ 0, 0 };
+	else
+		acc = vec_t{ 0, 0, 0 };
 
 	for (auto& j : m_Neighbors[i])
 	{
@@ -397,7 +398,11 @@ inline void SPHSimulation<D>::ComputeAccelerationPressure(idx_t i)
 	auto di = m_Particles_local.Density(i);
 	auto ddi = di * di;
 
-	vec_t acc = vec_t{ 0, 0 };
+	vec_t acc;
+	if constexpr (D == 2)
+		acc = vec_t{ 0, 0 };
+	else
+		acc = vec_t{ 0, 0, 0 };
 
 	for (auto& j : m_Neighbors[i])
 	{

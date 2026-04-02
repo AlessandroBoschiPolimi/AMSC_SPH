@@ -9,7 +9,6 @@
 
 struct GLFWwindow;
 
-// TODO: Make singleton
 template <ParticleSet<2> Particles>
 class ImGuiViewer : public Observer<2, Particles> {
 public:

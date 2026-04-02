@@ -21,7 +21,7 @@ public:
 	virtual ~Object() = default;
 
 	virtual void Activate(const idx_t i) {};
-	virtual void OnFrameStart() {};
+	virtual void OnFrameStart(const float time) {};
 	
 protected:
 	const coord<float, 2> A;
@@ -44,7 +44,7 @@ public:
 	virtual ~Object() = default;
 
 	virtual void Activate(const idx_t i) {};
-	virtual void OnFrameStart() {};
+	virtual void OnFrameStart(const float time) {};
 
 protected:
 	Particles& out;

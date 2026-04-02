@@ -13,11 +13,11 @@ public:
 	Sink(const coord<float, 2> A_, const coord<float, 2> B_, Particles& out_, const bool is_right_) : Object<2, Particles>(A_, B_, out_, is_right_) {}
 	~Sink() override = default;
 
-	void OnFrameStart() override;
+	void OnFrameStart(const float time) override;
 };
 
 template <ParticleSet<2> Particles>
-inline void Sink<2, Particles>::OnFrameStart()
+inline void Sink<2, Particles>::OnFrameStart(const float time)
 {
 	if (this->out.Empty())
 		return;

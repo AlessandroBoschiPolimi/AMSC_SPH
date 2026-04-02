@@ -48,7 +48,6 @@ inline void TrayInitializer<3, Particles>::Init(Particles& out, float h, Objects
 	}
 
 	// Create multiple walls of the box to avoid leaks
-	// TODO: Add walls options to properties
 	{
 		float maxx = 1.0 / 4, maxy = 1.0 / 4, maxz = 0.6;
 		for (int i = 0; i < 1; i++)

@@ -15,30 +15,29 @@ public:
 	Source(const coord<float, 2> A_, const coord<float, 2> B_, Particles& out_, const bool is_right_) : Object<2, Particles>(A_, B_, out_, is_right_) {}
 	~Source() override = default;
 
-	void OnFrameStart() override;
-	void SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_, const int max_frame_);
+	void OnFrameStart(const float time) override;
+	void SetParams(const float v_, const int part_count_, const float delay_, const float mass_, const bool is_gravity_, const float max_time_);
 
 private:
 	float v;
 	int part_count;
-	int fp_count;
 	float mass;
 	bool is_gravity;
-	int ii = 0;
-	long unsigned int frame_counter = 0;
-	int max_frame = 0;
+	float delay = std::numeric_limits<float>::max();
+	float max_time = std::numeric_limits<float>::max();
+	float last_activation = 0;
 };
 
 template <ParticleSet<2> Particles>
-inline void Source<2, Particles>::OnFrameStart()
+inline void Source<2, Particles>::OnFrameStart(const float time)
 {
-	if (frame_counter > max_frame && max_frame != 0)
+	if (time > max_time)
 		return;
-	ii++;
-	frame_counter++;
-	if (ii % fp_count != 0)
+	
+	if (time - last_activation < delay)
 		return;
-	ii = 0;
+	last_activation = time;
+
 	const coord<float, 2> vertical{0, -1};
 	const coord<float, 2> dlen = 1 / static_cast<float>(part_count) * (this->A - this->B);
 	coord<float, 2> norm_v = v / std::sqrt(1 + this->a * this->a) * coord<float, 2>{-this->a, 1};
@@ -64,13 +63,13 @@ inline void Source<2, Particles>::OnFrameStart()
 }
 
 template <ParticleSet<2> Particles>
-inline void Source<2, Particles>::SetParams(const float v_, const int part_count_, const int fp_count_, const float mass_, const bool is_gravity_, const int max_frame_)
+inline void Source<2, Particles>::SetParams(const float v_, const int part_count_, const float delay_, const float mass_, const bool is_gravity_, const float max_time_)
 {
 	v = v_;
 	part_count = part_count_;
-	fp_count = fp_count_;
+	delay = delay_;
 	mass = mass_;
 	is_gravity = is_gravity_;
-	max_frame = max_frame_;
+	max_time = max_time_;
 }
 

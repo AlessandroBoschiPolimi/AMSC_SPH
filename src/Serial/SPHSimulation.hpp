@@ -69,8 +69,6 @@ private:
  */
 
 
- // TODO: m_Params.SmoothingLength isn't garbage only if m_Params is defined before W_Ker, abstract the default value
-
 template <size_t D, ParticleSet<D> Particles>
 inline SPHSimulation<D, Particles>::SPHSimulation(NeighborFinder<D, Particles>* nf)
 	: base::SPHSimulation<D, Particles>(), m_NeighborFinder(nf), W_Ker(this->m_Params.SmoothingLength / 2.0f)
@@ -90,7 +88,7 @@ inline void SPHSimulation<D, Particles>::Step()
 {
 	this->NotifyStartFrame();
 	for (auto& obj : this->m_Objects)
-		obj->OnFrameStart();
+		obj->OnFrameStart(this->m_Time);
 
 	if (m_Neighbors.size() != m_Particles.Size())
 	{
@@ -280,7 +278,11 @@ inline void SPHSimulation<D, Particles>::ComputeAccelerationViscosity(idx_t i)
 	auto di = m_Particles.Density(i);
 
 	float sl2 = this->m_Params.SmoothingLength * this->m_Params.SmoothingLength;
-	vec_t acc = vec_t{ 0, 0 };
+	vec_t acc;
+	if constexpr (D == 2)
+		acc = vec_t{ 0, 0 };
+	else
+		acc = vec_t{ 0, 0, 0 };
 
 	for (auto& j : m_Neighbors[i])
 	{
@@ -319,7 +321,11 @@ inline void SPHSimulation<D, Particles>::ComputeAccelerationPressure(idx_t i)
 	auto di = m_Particles.Density(i);
 	auto ddi = di * di;
 
-	vec_t acc = vec_t{ 0, 0 };
+	vec_t acc;
+	if constexpr (D == 2)
+		acc = vec_t{ 0, 0 };
+	else
+		acc = vec_t{ 0, 0, 0 };
 
 	for (auto& j : m_Neighbors[i])
 	{

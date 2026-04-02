@@ -174,7 +174,7 @@ inline void MortonSorting<D, Particles>::InitializeFrame(SPHSimulation<D, Partic
 		m_CellStart.clear();
 		m_CellEnd.clear();
 
-		for (size_t i = 0; i < size; true) // TODO: parallelize?
+		for (size_t i = 0; i < size; true)
 		{
 			u64 code = morton[i];
 			size_t start = i;

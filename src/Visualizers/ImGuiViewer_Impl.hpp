@@ -72,7 +72,6 @@ void ImGuiViewer<Particles>::OnEndFrame()
 	}
 
 	// Copy, shouldn't be a bottleneck, and if it is then real time rendering isn't ideal anyway
-	// TODO: triple buffering
 	// TODO: there is no need for m_Particles to have the same memory layout of sim particles
 	//       this could be turned in a copy like
 	//       m_Sim->GetParticles().Populate(m_Particles)

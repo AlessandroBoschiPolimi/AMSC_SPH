@@ -41,7 +41,6 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 		}
 	}
 	// Create multiple walls of the box to avoid leaks
-	// TODO: Add walls options to properties
 	for (int i = 0; i < 2; i++)
 	{
 		this->BuildWallAlongX(out, 0.04 - h * i, 0, 1.0, 0.001);
