@@ -1,5 +1,17 @@
 # AMSC_SPH
 
+Code to simulate and visualize fluids using Smoothed Particle Hydrodynamics approach.
+
+- [Dependencies](#dependencies)
+- [Build](#build)
+- [Running Examples](#running-examples)
+- [Defining Custom Simulation](#defining-custom-simulation)
+	- [Particles Memory Layout](#particles-memory-layout)
+	- [Parallelization Method](#parallelization-method)
+	- [Neighbor Finding Method](#neighbor-finding-method)
+	- [Simulation Parameters](#simulation-parameters)
+	- [Initial State Of The Particles](#initial-state-of-the-particles)
+	- [Simulation Progress Observer](#simulation-progress-observer)
 
 ## Dependencies
 
@@ -17,13 +29,16 @@ Use the following cmake flag to exclude UI files from the compilation
 
 	-DDISABLE_UI=ON
 
+> Note: compilation on windows is supported, tho Microsoft MPI is not supported by our code (different runtime behavior), 
+so don't run MPI parallelization on windows.
+
 ## Running Examples
 
 It's possible to execute the already available simulations using the following command line parameters
 - `-example`
 - `-d <2 | 3>`: simulation dimension, either 2D or 3D
 - `-par <serial | openmp | mpi>`: parallelization method
-        - `-init <box | tray | TODO>`: initial state of the particles, see [Defining Custom Simulation](#defining-custom-simulation) for further details
+		- `-init <box | tray | TODO>`: initial state of the particles, see [Defining Custom Simulation](#defining-custom-simulation) for further details
 - `-nf <hash | morton>`: strategy to find particle neighbors, either spatial hashing or morton sorting
 - `-layout <AoS | SoA | hybrid>`: memory layout for collections of particles, see [Particles Memory Layout](#particles-memory-layout) for more info
 - `[-file <filename> <xyz | vtu | bvtu>]`: if present, writes particle state to a file with format ".xyz", ".vtu" or ".vtu" with binary encoding, and name `filename-{frame number}`
