@@ -94,6 +94,17 @@ void ImGuiViewer<Particles>::OnStartFrame()
 	m_SimTime = this->m_Sim->GetTime();
 	m_SimProfiling = this->m_Sim->GetProfiling();
 
+	auto& objs = this->m_Sim->GetObjects();
+	m_ObjectPositions.clear();
+	m_ObjectTypes.clear();
+	m_ObjectPositions.reserve(objs.size());
+	m_ObjectTypes.reserve(objs.size());
+	for (auto& obj : objs)
+	{
+		this->m_ObjectPositions.push_back(obj->GetPosition());
+		this->m_ObjectTypes.push_back(obj->GetType());
+	}
+
 	auto now = stdclock::now();
 	m_SimTrueTimeCounter += now - m_SimFrameStart;
 	m_SimFrameStart = now;

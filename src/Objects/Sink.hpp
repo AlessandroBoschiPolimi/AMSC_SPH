@@ -14,6 +14,8 @@ public:
 	~Sink() override = default;
 
 	void OnFrameStart(const float time) override;
+
+	ObjectType GetType() const override { return ObjectType::SINK; }
 };
 
 template <ParticleSet<2> Particles>

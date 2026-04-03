@@ -2,8 +2,6 @@
 #include "Utility.hpp"
 #include "Object.hpp"
 
-// TODO: make their behaviour depend on simulation time, not frame count
-
 template <size_t D, ParticleSet<2> Particles>
 class Source;
 
@@ -17,6 +15,8 @@ public:
 
 	void OnFrameStart(const float time) override;
 	void SetParams(const float v_, const int part_count_, const float delay_, const float mass_, const bool is_gravity_, const float max_time_);
+
+	ObjectType GetType() const override { return ObjectType::SOURCE; }
 
 private:
 	float v;

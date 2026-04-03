@@ -3,6 +3,11 @@
 #include <vector>
 
 
+enum class ObjectType
+{
+	UNKNOWN, SOURCE, SINK, PROBE
+};
+
 template <size_t D, ParticleSet<D> Particles>
 class Object;
 
@@ -22,7 +27,10 @@ public:
 
 	virtual void Activate(const idx_t i) {};
 	virtual void OnFrameStart(const float time) {};
-	
+
+	virtual ObjectType GetType() const { return ObjectType::UNKNOWN; }
+	std::pair<coord<float, 2>, coord<float, 2>> GetPosition() const { return { A, B }; }
+
 protected:
 	const coord<float, 2> A;
 	const coord<float, 2> B;

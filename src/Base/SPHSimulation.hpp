@@ -108,6 +108,7 @@ public: // Generic interface
 
 	void ApplyCommand(const Command<D>& cmd) { m_Command = cmd; }
 
+	std::vector<std::unique_ptr<Object<D, Particles>>>& GetObjects() { return m_Objects; }
 
 protected: // Generic functions
 	void NotifyStartFrame() {

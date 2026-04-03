@@ -80,6 +80,9 @@ private:
 	base::SPHParams m_SimParams;
 	std::string m_SimName;
 
+	std::vector<std::pair<coord<float, 2>, coord<float, 2>>> m_ObjectPositions;
+	std::vector<ObjectType> m_ObjectTypes;
+
 	enum ColoringParam
 	{
 		PRESSURE, VELOCITY
