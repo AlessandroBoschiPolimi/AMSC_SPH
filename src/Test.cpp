@@ -128,6 +128,7 @@ void Test_2D_Pipe_OpenMP_Morton()
 	openmp::SPHSimulation<Size, Particles> sph(&nf);
 	sph.SetName("AoS-Pipe-OpenMP-Morton");
 	sph.SetTimeStep(0.0001f);
+	sph.SetFinalTime(5);
 
 	PipeInitializer<Size, Particles> initializer;
 	sph.InitializeFluid(&initializer);

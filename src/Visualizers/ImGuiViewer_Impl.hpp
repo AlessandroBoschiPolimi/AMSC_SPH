@@ -101,7 +101,13 @@ void ImGuiViewer<Particles>::OnStartFrame()
 	m_ObjectTypes.reserve(objs.size());
 	for (auto& obj : objs)
 	{
-		this->m_ObjectPositions.push_back(obj->GetPosition());
+		auto pos = obj->GetPosition();
+		coord<float, 2> tl, br;
+		tl.x = std::min(pos.first.x, pos.second.x);
+		br.x = std::max(pos.first.x, pos.second.x);
+		tl.y = std::max(pos.first.y, pos.second.y);
+		br.y = std::min(pos.first.y, pos.second.y);
+		this->m_ObjectPositions.push_back({ tl, br });
 		this->m_ObjectTypes.push_back(obj->GetType());
 	}
 
@@ -277,6 +283,28 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 		}
 
 		drawList->AddCircleFilled(pos, r, color);
+	}
+
+	for (int i = 0; i < m_ObjectPositions.size(); i++)
+	{
+		auto pos = m_ObjectPositions[i];
+		auto type = m_ObjectTypes[i];
+
+		ImU32 color;
+
+		if (type == ObjectType::UNKNOWN)
+			color = ImColor(216, 0, 255);
+		else if (type == ObjectType::SOURCE)
+			color = ImColor(83, 154, 255);
+		else if (type == ObjectType::SINK)
+			color = ImColor(255, 50, 50);
+		else if (type == ObjectType::PROBE)
+			color = ImColor(255, 255, 255);
+
+		ImVec2 tl = WorldToScreen(pos.first, canvasPos, canvasSize), br = WorldToScreen(pos.second, canvasPos, canvasSize);
+
+		drawList->AddRect(tl, br, color);
+		drawList->AddLine(tl, br, color);
 	}
 
 	ImGui::End();
