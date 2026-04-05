@@ -1,4 +1,6 @@
 #include "ImGuiWidgets.hpp"
+#include <string>
+#include "Probe.hpp"
 
 float Lerp(float a, float b, float t)
 {
@@ -174,10 +176,14 @@ int StackedProgressBar(const std::vector<float>& values, const ImVec2& size)
 }
 
 
-bool EditProbe(ImVec2 pos, bool* open, float p1[2], float p2[2], char* buf, size_t size)
+bool BeginEditProbeWindow(ImVec2 pos, bool* open, float p1[2], float p2[2], char* buf, size_t size, bool copy, bool paste)
 {
 	ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 	ImGui::SetNextWindowSize(ImVec2(400, 150), ImGuiCond_FirstUseEver);
+
+	static stdclock::time_point error_time;
+	static std::string error_msg = "";
+	static bool error_show = false;
 
 	ImGui::Begin("Add Probe", open);
 
@@ -198,6 +204,48 @@ bool EditProbe(ImVec2 pos, bool* open, float p1[2], float p2[2], char* buf, size
 	{
 		ImGui::End();
 		return true;
+	}
+	ImGui::SameLine();
+
+	if (ImGui::Button("Copy") || copy)
+	{
+		Probe p;
+		p.Name = buf;
+		p.TL = { p1[0], p1[1] };
+		p.BR = { p2[0], p2[1] };
+		
+		ImGui::SetClipboardText(p.ToString().c_str());
+	}
+	ImGui::SameLine();
+
+	if (ImGui::Button("Paste") || paste)
+	{
+		const char* clip = ImGui::GetClipboardText();
+		if (clip)
+		{
+			std::string str = clip;
+			std::optional<Probe> op = Probe::ParseOne(str);
+			if (op.has_value())
+			{
+				Probe p = op.value();
+				p1[0] = p.TL.x; p1[1] = p.TL.y; p2[0] = p.BR.x; p2[1] = p.BR.y;
+				strcpy_s(buf, size * sizeof(char), p.Name.c_str());
+			}
+			else
+			{
+				error_msg = "Invalid text pasted, use format {name}:{tl.x}:{tl.y}:{br.x}:{br.y}";
+				error_time = stdclock::now();
+				error_show = true;
+			}
+		}
+	}
+
+	if (error_show)
+	{
+		ImGui::TextUnformatted(error_msg.c_str());
+
+		if (stdclock::now() - error_time > 2s)
+			error_show = false;
 	}
 
 	ImGui::End();

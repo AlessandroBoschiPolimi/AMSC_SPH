@@ -9,6 +9,7 @@
 #include "Command.hpp"
 
 struct GLFWwindow;
+struct ImDrawList;
 
 template <ParticleSet<2> Particles>
 class ImGuiViewer : public Observer<2, Particles> {
@@ -48,19 +49,19 @@ private:
 	/// UI Cleanup
 	void Deinit();
 
-	/// Executes on the UI thread
-	void DrawStatsWindow();
-	/// Executes on the UI thread
-	void DrawVisualizationWindow();
-	/// Executes on the UI thread
-	void DrawDataWindow();
-	/// Executes on the UI thread
-	/// Returns 1 if the probe has been removed
+	/// The following functions execute on the UI thread
+	void RenderStatsWindow();
+	void RenderVisualizationWindow();
+	void RenderProbeWindow();
+	/// Returns true if the probe has been removed
 	bool RenderProbe(size_t i);
-	/// Executes on the UI thread
+	void DrawParticles(ImDrawList* drawList);
+	void DrawObjects(ImDrawList* drawList);
+	void DrawProbes(ImDrawList* drawList);
 	void BeginFullscreenDockspace();
-	/// Executes on the UI thread
 	void BuildInitialLayout();
+
+	void ProcessShortcuts();
 
 private:
 	Particles m_Particles;
@@ -95,6 +96,7 @@ private:
 	// ### PROBES ###
 	bool m_ShowProbes = false;
 	std::vector<Probe> m_Probes;
+	bool m_WantCopyProbes = false, m_WantPasteProbes = false, m_EditingProbe = false;
 
 
 	// ### OBJECTS ###

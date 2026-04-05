@@ -35,4 +35,9 @@ struct Probe
 		BR = other.BR;
 		Selected = other.Selected;
 	}
+
+	static std::optional<Probe> ParseOne(const std::string& str);
+	static std::optional<std::vector<Probe>> ParseMultiple(const std::string& str);
+
+	std::string ToString() const;
 };

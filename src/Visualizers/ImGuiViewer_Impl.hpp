@@ -117,9 +117,16 @@ void ImGuiViewer<Particles>::OnStartFrame()
 }
 
 
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::ProcessShortcuts()
+{
+	m_WantPasteProbes = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_V);
+	m_WantCopyProbes = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_C);
+}
+
 
 template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::DrawStatsWindow()
+void ImGuiViewer<Particles>::RenderStatsWindow()
 {
 #ifdef IMGUI_HAS_DOCK
 	ImGui::SetNextWindowDockID(m_DockIDLeft, ImGuiCond_Appearing);
@@ -212,8 +219,10 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 
 	ImGui::End();
 }
+
+
 template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::DrawVisualizationWindow()
+void ImGuiViewer<Particles>::RenderVisualizationWindow()
 {
 #ifdef IMGUI_HAS_DOCK
 	ImGui::SetNextWindowDockID(m_DockIDCenter, ImGuiCond_Appearing);
@@ -254,7 +263,18 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 		IM_COL32(20, 20, 20, 255)
 	);
 
-	// Draw particles
+	DrawParticles(drawList);
+	DrawObjects(drawList);
+	DrawProbes(drawList);
+
+	ImGui::End();
+}
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::DrawParticles(ImDrawList* drawList)
+{
+	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+
 	for (size_t i = 0; i < m_Particles.Size(); i++) {
 		const Particle<2>& p = m_Particles.GetParticle(i);
 
@@ -264,34 +284,28 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 
 		if (p.Type == SOLID)
 		{
-			color = ImColor::HSV(
-				0.0f, // blue -> red
-				0.0f,
-				1.0f
-			);
+			color = ImColor(255, 255, 255);
 		}
 		else if (m_ColoringParam == PRESSURE)
 		{
 			float t = std::clamp(p.Pressure / m_MaxPressure, 0.0f, 1.0f);
-			color = ImColor::HSV(
-				0.66f - 0.66f * t, // blue -> red
-				1.0f,
-				1.0f
-			);
+			color = ImColor::HSV(0.66f - 0.66f * t, 1.0f, 1.0f); // blue -> red
 		}
 		else if (m_ColoringParam == VELOCITY)
 		{
 			float t = Norm(p.Velocity);
 			t = std::clamp(t / m_MaxVelocity, 0.0f, 1.0f);
-			color = ImColor::HSV(
-				0.66f - 0.66f * t, // blue -> red
-				1.0f,
-				1.0f
-			);
+			color = ImColor::HSV(0.66f - 0.66f * t, 1.0f, 1.0f); // blue -> red
 		}
 
 		drawList->AddCircleFilled(pos, r, color);
 	}
+}
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::DrawObjects(ImDrawList* drawList)
+{
+	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 
 	for (int i = 0; i < m_ObjectPositions.size(); i++)
 	{
@@ -312,105 +326,182 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 		drawList->AddRect(tl, br, color);
 		drawList->AddLine(tl, br, color);
 	}
-
-	ImGui::End();
 }
 template <ParticleSet<2> Particles>
-void ImGuiViewer<Particles>::DrawDataWindow()
+void ImGuiViewer<Particles>::DrawProbes(ImDrawList* drawList)
+{
+	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+
+	for (int i = 0; i < m_Probes.size(); i++)
+	{
+		Probe& p = m_Probes[i];
+
+		ImVec2 tl = WorldToScreen(p.TL, canvasPos, canvasSize), br = WorldToScreen(p.BR, canvasPos, canvasSize);
+		ImU32 color = ImColor(255, 255, 255);
+
+		drawList->AddRect(tl, br, color);
+		drawList->AddLine(tl, br, color);
+	}
+}
+
+
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::RenderProbeWindow()
 {
 	ImGuiContext& g = *GImGui;
 	const ImGuiStyle& style = g.Style;
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
 
-	if (m_ShowProbes)
-	{
+	static stdclock::time_point error_time;
+	static std::string error_msg = "";
+	static bool error_show = false;
+
+	if (!m_ShowProbes)
+		return;
+
 #ifdef IMGUI_HAS_DOCK
-		ImGui::SetNextWindowDockID(m_DockIDBottom, ImGuiCond_Appearing);
+	ImGui::SetNextWindowDockID(m_DockIDBottom, ImGuiCond_Appearing);
 #endif
-		bool visible = ImGui::Begin("Probes", &m_ShowProbes);
-		if (visible)
+	bool visible = ImGui::Begin("Probes", &m_ShowProbes);
+	if (!visible)
+	{
+		ImGui::End();
+		return;
+	}
+
+	// Add Probe
+	{
+		static bool show_add_probe = false;
+		static float p1[2] = { 0.0f, 0.0f }, p2[2] = { 0.0f, 0.0f };
+		static constexpr size_t SIZE = 255;
+		static char buf[SIZE] = "\0";
+
+		if (ImGui::Button("Add"))
 		{
-			// Add Probe
+			m_EditingProbe = true;
+			show_add_probe = true;
+			p1[0] = 0; p1[1] = 0; p2[0] = 0; p2[1] = 0;
+			buf[0] = '\0';
+		}
+		if (show_add_probe)
+		{
+			if (BeginEditProbeWindow(center, &show_add_probe, p1, p2, buf, SIZE, m_WantCopyProbes, m_WantPasteProbes))
 			{
-				static bool show_add_probe = false;
-				static float p1[2] = { 0.0f, 0.0f }, p2[2] = { 0.0f, 0.0f };
-				if (ImGui::Button("Add"))
-				{
-					show_add_probe = true;
-					p1[0] = 0; p1[1] = 0; p2[0] = 0; p2[1] = 0;
-				}
-				if (show_add_probe)
-				{
-					constexpr size_t SIZE = 255;
-					char buf[SIZE] = "\0";
-
-					if (EditProbe(center, &show_add_probe, p1, p2, buf, SIZE))
-					{
-						Probe p;
-						p.Name = buf;
-						if (p.Name.empty())
-							p.Name = std::format("Probe {}", m_Probes.size() + 1);
-						p.Selected = false;
-						p.TL = { p1[0], p1[1] };
-						p.BR = { p2[0], p2[1] };
-						m_Probes.push_back(p);
-						show_add_probe = false;
-					}
-				}
+				Probe p;
+				p.Name = buf;
+				if (p.Name.empty())
+					p.Name = std::format("Probe {}", m_Probes.size() + 1);
+				p.Selected = false;
+				p.TL = { p1[0], p1[1] };
+				p.BR = { p2[0], p2[1] };
+				m_Probes.push_back(p);
+				show_add_probe = false;
 			}
+			if (!show_add_probe)
+				m_EditingProbe = false;
+		}
+	}
 			
-			ImGui::SameLine();
-			if (ImGui::Button("Remove All"))
-				m_Probes.clear();
+	ImGui::SameLine();
+	if (ImGui::Button("Remove All"))
+		m_Probes.clear();
 			
-			ImGui::SameLine();
+	ImGui::SameLine();
 
-			// Select All
+	// Select All
+	{
+		bool are_all_selected = !m_Probes.empty();
+		for (auto& p : m_Probes)
+			if (!p.Selected)
+				are_all_selected = false;
+
+		if (are_all_selected)
+		{
+			if (ImGui::Button("Deselect All"))
 			{
-				bool are_all_selected = !m_Probes.empty();
 				for (auto& p : m_Probes)
-					if (!p.Selected)
-						are_all_selected = false;
+					p.Selected = false;
+			}
+		}
+		else
+		{
+			if (ImGui::Button("Select All"))
+			{
+				for (auto& p : m_Probes)
+					p.Selected = true;
+			}
+		}
+	}
 
-				if (are_all_selected)
+	ImGui::SameLine();
+
+	// Copy/Paste
+	{
+		if (ImGui::Button("Copy") || (!m_EditingProbe && m_WantCopyProbes))
+		{
+			std::stringstream ss;
+			
+			for (const auto& p : m_Probes)
+			{
+				ss << p.ToString();
+				ss << ';';
+			}
+
+			ImGui::SetClipboardText(ss.str().c_str());
+		}
+		ImGui::SameLine();
+
+		if (ImGui::Button("Paste") || (!m_EditingProbe && m_WantPasteProbes))
+		{
+			const char* clip = ImGui::GetClipboardText();
+			if (clip)
+			{
+				std::string str = clip;
+				std::optional<std::vector<Probe>> op = Probe::ParseMultiple(str);
+				if (op.has_value())
 				{
-					if (ImGui::Button("Deselect All"))
-					{
-						for (auto& p : m_Probes)
-							p.Selected = false;
-					}
+					std::vector<Probe> ps = op.value();
+					m_Probes.append_range(ps);
 				}
 				else
 				{
-					if (ImGui::Button("Select All"))
-					{
-						for (auto& p : m_Probes)
-							p.Selected = true;
-					}
+					error_msg = "Invalid text pasted, use format {{name}:{tl.x}:{tl.y}:{br.x}:{br.y}};{...}";
+					error_time = stdclock::now();
+					error_show = true;
 				}
 			}
-			
-			if (ImGui::Button("Compute"))
-			{
-
-			}
-
-			if (ImGui::BeginChild("ProbesList", ImVec2(0, 0), true))
-			{
-				for (size_t i = 0; i < m_Probes.size(); ++i)
-				{
-					if (RenderProbe(i))
-					{
-						i--;
-						break;
-					}
-				}
-			}
-			ImGui::EndChild();
 		}
-		ImGui::End();
 	}
+			
+	if (ImGui::Button("Compute"))
+	{
+
+	}
+
+	if (error_show)
+	{
+		ImGui::TextUnformatted(error_msg.c_str());
+
+		if (stdclock::now() - error_time > 2s)
+			error_show = false;
+	}
+
+	if (ImGui::BeginChild("ProbesList", ImVec2(0, 0), true))
+	{
+		for (size_t i = 0; i < m_Probes.size(); ++i)
+		{
+			if (RenderProbe(i))
+			{
+				i--;
+				break;
+			}
+		}
+	}
+	ImGui::EndChild();
+
+	ImGui::End();
 }
 template <ParticleSet<2> Particles>
 bool ImGuiViewer<Particles>::RenderProbe(size_t i)
@@ -446,6 +537,7 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 		if (ImGui::Button("Edit"))
 		{
 			edit = i;
+			m_EditingProbe = true;
 			p1[0] = probe.TL.x; p1[1] = probe.TL.y; p2[0] = probe.BR.x; p2[1] = probe.BR.y;
 			strcpy_s(buf, SIZE * sizeof(char), probe.Name.substr(0, SIZE).data());
 		}
@@ -453,7 +545,7 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 		if (edit == i)
 		{
 			bool open = true;
-			if (EditProbe(center, &open, p1, p2, buf, SIZE))
+			if (BeginEditProbeWindow(center, &open, p1, p2, buf, SIZE, m_WantCopyProbes, m_WantPasteProbes))
 			{
 				probe.Name = buf;
 				if (probe.Name.empty())
@@ -461,9 +553,13 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 				probe.TL = { p1[0], p1[1] };
 				probe.BR = { p2[0], p2[1] };
 				edit = -1;
+				m_EditingProbe = false;
 			}
 			if (open == false)
+			{
 				edit = -1;
+				m_EditingProbe = false;
+			}
 		}
 	}
 
@@ -571,9 +667,10 @@ void ImGuiViewer<Particles>::Loop()
 		{
 			std::lock_guard<std::mutex> lock(m_Mutex);
 
-			DrawStatsWindow();
-			DrawVisualizationWindow();
-			DrawDataWindow();
+			ProcessShortcuts();
+			RenderStatsWindow();
+			RenderVisualizationWindow();
+			RenderProbeWindow();
 
 			m_RequestNewParticles = true;
 		}
