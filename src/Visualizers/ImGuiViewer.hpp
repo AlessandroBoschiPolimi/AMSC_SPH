@@ -55,6 +55,7 @@ private:
 	void RenderProbeWindow();
 	/// Returns true if the probe has been removed
 	bool RenderProbe(size_t i);
+	void RenderProbeDataWindow();
 	void DrawParticles(ImDrawList* drawList);
 	void DrawObjects(ImDrawList* drawList);
 	void DrawProbes(ImDrawList* drawList);
@@ -96,7 +97,8 @@ private:
 	// ### PROBES ###
 	bool m_ShowProbes = false;
 	std::vector<Probe> m_Probes;
-	bool m_WantCopyProbes = false, m_WantPasteProbes = false, m_EditingProbe = false;
+	bool m_WantCopyProbes = false, m_WantPasteProbes = false;
+	bool m_ShowProbesData = false, m_EditingProbe = false;
 
 
 	// ### OBJECTS ###

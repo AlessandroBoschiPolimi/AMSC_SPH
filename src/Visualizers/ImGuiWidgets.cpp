@@ -2,6 +2,7 @@
 #include <string>
 #include "Probe.hpp"
 
+
 float Lerp(float a, float b, float t)
 {
 	return a + (b - a) * t;
@@ -111,7 +112,7 @@ int DrawPieChart(const std::vector<float>& values, const std::vector<ImU32>& col
 
 
 
-int StackedProgressBar(const std::vector<float>& values, const ImVec2& size)
+int DrawStackedProgressBar(const std::vector<float>& values, const ImVec2& size)
 {
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	if (window->SkipItems)
@@ -250,4 +251,90 @@ bool BeginEditProbeWindow(ImVec2 pos, bool* open, float p1[2], float p2[2], char
 
 	ImGui::End();
 	return false;
+}
+
+
+
+std::underlying_type_t<DrawGraphMode> operator&(DrawGraphMode a, DrawGraphMode b)
+{
+	using type = std::underlying_type_t<DrawGraphMode>;
+	return (to<type>(a) & to<type>(b));
+}
+DrawGraphMode operator|(DrawGraphMode a, DrawGraphMode b)
+{
+	using type = std::underlying_type_t<DrawGraphMode>;
+	return to<DrawGraphMode>(to<type>(a) | to<type>(b));
+}
+
+GraphRange DrawGraph(const std::vector<coord<float, 2>>& points, ImVec2 size, DrawGraphMode mode, const consumer<ImDrawList*>& custom_draw)
+{
+	// Create a canvas
+	ImGui::BeginChild("GraphCanvas", size, true);
+
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+
+	// Background
+	drawList->AddRectFilled(canvasPos,
+		ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y),
+		IM_COL32(30, 30, 30, 255));
+
+	if (points.size() < 2)
+	{
+		ImGui::EndChild();
+		return GraphRange{ {0, 0}, {0, 0} };
+	}
+
+	// Find bounds
+	float minX = points[0].x, maxX = points[0].x;
+	float minY = points[0].y, maxY = points[0].y;
+
+	for (const auto& p : points)
+	{
+		minX = std::min(minX, p.x);
+		maxX = std::max(maxX, p.x);
+		minY = std::min(minY, p.y);
+		maxY = std::max(maxY, p.y);
+	}
+
+	float rangeX = (maxX - minX) > 0 ? (maxX - minX) : 1.0f;
+	float rangeY = (maxY - minY) > 0 ? (maxY - minY) : 1.0f;
+
+	// Helper: transform point -> screen space
+	auto ToScreen = [&](const coord<float, 2>& p) -> ImVec2
+		{
+			float nx = (p.x - minX) / rangeX;
+			float ny = (p.y - minY) / rangeY;
+
+			return ImVec2(
+				canvasPos.x + nx * canvasSize.x,
+				canvasPos.y + (1.0f - ny) * canvasSize.y // invert Y
+			);
+		};
+
+	if ((mode & DrawGraphMode::LINE) != 0)
+	{
+		for (size_t i = 0; i < points.size() - 1; ++i)
+		{
+			ImVec2 p1 = ToScreen(points[i]);
+			ImVec2 p2 = ToScreen(points[i + 1]);
+
+			drawList->AddLine(p1, p2, IM_COL32(0, 255, 0, 255), 2.0f);
+		}
+	}
+
+	if ((mode & DrawGraphMode::POINT) != 0)
+	{
+		for (const auto& p : points)
+			drawList->AddCircleFilled(ToScreen(p), 3.0f, IM_COL32(255, 255, 255, 255));
+	}
+
+	if (custom_draw)
+		custom_draw(drawList);
+
+	ImGui::EndChild();
+
+	return GraphRange{ { minX, maxX }, { minY, maxY } };
 }

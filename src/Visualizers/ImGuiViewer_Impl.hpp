@@ -163,7 +163,7 @@ void ImGuiViewer<Particles>::RenderStatsWindow()
 
 		{
 			std::vector<float> parts = { to<float>(m_SimProfiling.Neighbors.count()), to<float>(m_SimProfiling.Initialize.count()), to<float>(m_SimProfiling.IterativePressure.count()) };
-			int hovering = StackedProgressBar(parts);
+			int hovering = DrawStackedProgressBar(parts);
 			if (hovering != -1)
 			{
 				static std::string labels[] = { "Neighbors", "Initialize", "Iterative Pressure" };
@@ -193,7 +193,7 @@ void ImGuiViewer<Particles>::RenderStatsWindow()
 
 	ImGui::Separator();
 	{
-		const char* items[] = { "Pressure", "Velocity" };
+		static const char* items[] = { "Pressure", "Velocity" };
 		static int coloring_param_int = 1;
 		ImGui::Combo("Coloring Parameter", &coloring_param_int, items, IM_ARRAYSIZE(items));
 		m_ColoringParam = (ColoringParam)coloring_param_int;
@@ -201,12 +201,12 @@ void ImGuiViewer<Particles>::RenderStatsWindow()
 		if (m_ColoringParam == PRESSURE)
 		{
 			ImGui::SliderFloat("Max UI Pressure", &m_MaxPressure, 0, 20000, "%.0f");
-			DrawLegendScale(ImVec2(200.0f, 16.0f), 0, m_MaxPressure);
+			DrawLegendScale(ImVec2(200.0f, ImGui::GetTextLineHeightWithSpacing()), 0, m_MaxPressure);
 		}
 		else if (m_ColoringParam == VELOCITY)
 		{
 			ImGui::SliderFloat("Max UI Velocity", &m_MaxVelocity, 0, 5, "%.5f");
-			DrawLegendScale(ImVec2(200.0f, 16.0f), 0, m_MaxVelocity);
+			DrawLegendScale(ImVec2(200.0f, ImGui::GetTextLineHeightWithSpacing()), 0, m_MaxVelocity);
 		}
 	}
 
@@ -373,21 +373,29 @@ void ImGuiViewer<Particles>::RenderProbeWindow()
 
 	// Add Probe
 	{
-		static bool show_add_probe = false;
+		static bool show_edit_window = false;
 		static float p1[2] = { 0.0f, 0.0f }, p2[2] = { 0.0f, 0.0f };
 		static constexpr size_t SIZE = 255;
 		static char buf[SIZE] = "\0";
 
+		if (m_EditingProbe)
+			ImGui::BeginDisabled();
+
 		if (ImGui::Button("Add"))
 		{
-			m_EditingProbe = true;
-			show_add_probe = true;
+			show_edit_window = true;
 			p1[0] = 0; p1[1] = 0; p2[0] = 0; p2[1] = 0;
 			buf[0] = '\0';
 		}
-		if (show_add_probe)
+
+		if (m_EditingProbe)
+			ImGui::EndDisabled();
+
+		// use a static variable to show the window m_EditingProbe can be set from other loc
+		if (show_edit_window)
 		{
-			if (BeginEditProbeWindow(center, &show_add_probe, p1, p2, buf, SIZE, m_WantCopyProbes, m_WantPasteProbes))
+			m_EditingProbe = true;
+			if (BeginEditProbeWindow(center, &m_EditingProbe, p1, p2, buf, SIZE, m_WantCopyProbes, m_WantPasteProbes))
 			{
 				Probe p;
 				p.Name = buf;
@@ -397,10 +405,11 @@ void ImGuiViewer<Particles>::RenderProbeWindow()
 				p.TL = { p1[0], p1[1] };
 				p.BR = { p2[0], p2[1] };
 				m_Probes.push_back(p);
-				show_add_probe = false;
-			}
-			if (!show_add_probe)
 				m_EditingProbe = false;
+				show_edit_window = false;
+			}
+			if (m_EditingProbe == false)
+				show_edit_window = false;
 		}
 	}
 			
@@ -475,9 +484,12 @@ void ImGuiViewer<Particles>::RenderProbeWindow()
 		}
 	}
 			
-	if (ImGui::Button("Compute"))
 	{
+		if (ImGui::Button("Compute"))
+			m_ShowProbesData = true;
 
+		if (m_ShowProbesData)
+			RenderProbeDataWindow();
 	}
 
 	if (error_show)
@@ -528,11 +540,16 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 
 	ImGui::SameLine(avail - editWidth - removeWidth - padding.x);
 
+	bool should_disable = m_EditingProbe;
+
 	// Edit
 	{
 		static float p1[2] = { 0.0f, 0.0f }, p2[2] = { 0.0f, 0.0f };
 		static constexpr size_t SIZE = 255;
 		static char buf[SIZE] = "\0";
+
+		if (should_disable)
+			ImGui::BeginDisabled();
 
 		if (ImGui::Button("Edit"))
 		{
@@ -542,10 +559,12 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 			strcpy_s(buf, SIZE * sizeof(char), probe.Name.substr(0, SIZE).data());
 		}
 
+		if (should_disable)
+			ImGui::EndDisabled();
+
 		if (edit == i)
 		{
-			bool open = true;
-			if (BeginEditProbeWindow(center, &open, p1, p2, buf, SIZE, m_WantCopyProbes, m_WantPasteProbes))
+			if (BeginEditProbeWindow(center, &m_EditingProbe, p1, p2, buf, SIZE, m_WantCopyProbes, m_WantPasteProbes))
 			{
 				probe.Name = buf;
 				if (probe.Name.empty())
@@ -555,27 +574,130 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 				edit = -1;
 				m_EditingProbe = false;
 			}
-			if (open == false)
-			{
+			if (m_EditingProbe == false)
 				edit = -1;
-				m_EditingProbe = false;
-			}
 		}
 	}
 
 	ImGui::SameLine(avail - removeWidth);
 
+	if (should_disable)
+		ImGui::BeginDisabled();
+
 	if (ImGui::Button("Remove"))
 	{
 		m_Probes.erase(m_Probes.begin() + i);
 
-		edit = -1;
+		if (edit != -1)
+		{
+			edit = -1;
+			m_EditingProbe = false;
+		}
+
 		ImGui::PopID();
 		return true;
 	}
 
+	if (should_disable)
+		ImGui::EndDisabled();
+
 	ImGui::PopID();
 	return false;
+}
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::RenderProbeDataWindow()
+{
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	ImGuiIO& io = ImGui::GetIO();
+	ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+
+	ImGui::SetNextWindowPos(center, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
+
+	bool visible = ImGui::Begin("Data");
+	if (!visible) {
+		ImGui::End();
+		return;
+	}
+
+	enum class PlotType : int {
+		PRESSURE_DEPTH = 0
+	};
+
+	static const char* items[] = { "Pressure/Depth" };
+	static PlotType plot_type = PlotType::PRESSURE_DEPTH;
+	ImGui::TextUnformatted("Plot Type: "); ImGui::SameLine();
+	ImGui::Combo("##PlotType", (int*)&plot_type, items, IM_ARRAYSIZE(items));
+
+	ImGui::SameLine();
+	
+	static std::vector<coord<float, 2>> points;
+
+	static bool realtime = false;
+	if (ImGui::Button("Generate") || realtime)
+	{
+		// Sample data
+		points.clear();
+
+		// TODO: turn this in like SampleForPressureDepth() that calls ForAllParticleInProbes() that takes a lambda like
+		// [](int probe_id, int particle_index, float x, float y)
+		// which queries just pressure and stores them
+
+		std::vector<Particle<2>> particles;
+
+		for (const Probe& probe : m_Probes)
+		{
+			if (!probe.Selected)
+				continue;
+
+			for (size_t i = 0; i < m_Particles.Size(); i++)
+			{
+				if (m_Particles.Type(i) != ParticleType::FLUID)
+					continue;
+
+				coord<float, 2> pos = m_Particles.Position(i);
+
+				if (pos.x >= probe.TL.x && pos.x <= probe.BR.x && pos.y >= probe.BR.y && pos.y <= probe.TL.y)
+					particles.push_back(m_Particles.GetParticle(i));
+			}
+		}
+
+
+		if (!particles.empty())
+		{
+			if (plot_type == PlotType::PRESSURE_DEPTH)
+			{
+				float miny = particles[0].Position.y;
+				for (const Particle<2>& part : particles)
+					miny = std::min(miny, part.Position.y);
+
+				for (const Particle<2>& part : particles)
+					points.push_back({ part.Position.y - miny, part.Pressure });
+			}
+		}
+	}
+
+	ImGui::SameLine();
+	ImGui::Checkbox("Realtime", &realtime);
+
+	ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+	canvasSize.y = canvasSize.y - ImGui::GetFrameHeightWithSpacing();
+
+	GraphRange range = DrawGraph(points, canvasSize, DrawGraphMode::POINT, [](ImDrawList* drawList) {});
+
+	ImGui::Text("Items: %d", points.size());
+	
+	ImVec2 mousePos = ImGui::GetMousePos();
+	vec_t worldPos = ScreenToWorld(mousePos, canvasPos, canvasSize);
+	if (worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0)
+	{
+		ImGui::SameLine();
+		ImGui::Text("| Mouse Position: %.2f:%.2f", worldPos.x * (range.x.max - range.x.min) + range.x.min, worldPos.y * (range.y.max - range.y.min) + range.y.min);
+	}
+
+	ImGui::End();
 }
 
 template <ParticleSet<2> Particles>
