@@ -172,3 +172,34 @@ int StackedProgressBar(const std::vector<float>& values, const ImVec2& size)
 
 	return hovering;
 }
+
+
+bool EditProbe(ImVec2 pos, bool* open, float p1[2], float p2[2], char* buf, size_t size)
+{
+	ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(ImVec2(400, 150), ImGuiCond_FirstUseEver);
+
+	ImGui::Begin("Add Probe", open);
+
+	ImGui::TextUnformatted("Name: "); ImGui::SameLine();
+	ImGui::InputText("##name", buf, size);
+
+	float lw = std::max(ImGui::CalcTextSize("Top Left: ").x, ImGui::CalcTextSize("Bottom Right: ").x) * 1.1;
+
+	ImGui::TextUnformatted("Top Left: "); ImGui::SameLine();
+	ImGui::SetCursorPosX(lw);
+	ImGui::InputFloat2("##apc1", p1); // add probe coord
+
+	ImGui::TextUnformatted("Bottom Right: "); ImGui::SameLine();
+	ImGui::SetCursorPosX(lw);
+	ImGui::InputFloat2("##apc2", p2);
+
+	if (ImGui::Button("Confirm"))
+	{
+		ImGui::End();
+		return true;
+	}
+
+	ImGui::End();
+	return false;
+}

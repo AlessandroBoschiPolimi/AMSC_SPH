@@ -203,6 +203,12 @@ void ImGuiViewer<Particles>::DrawStatsWindow()
 		}
 	}
 
+	ImGui::Separator();
+	{
+		if (ImGui::Button("Probes"))
+			m_ShowProbes = true;
+	}
+
 
 	ImGui::End();
 }
@@ -222,7 +228,9 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 	ImVec2 mousePos = ImGui::GetMousePos();
 	vec_t worldPos  = ScreenToWorld(mousePos, canvasPos, canvasSize);
 
-	if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0)
+	bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+	bool clicked = ImGui::IsMouseDown(ImGuiMouseButton_Left) && worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0;
+	if (hovered && clicked)
 	{
 		m_Cmd.Type = Command<2>::PRESSURE;
 		m_Cmd.Position = worldPos;
@@ -298,8 +306,6 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 			color = ImColor(83, 154, 255);
 		else if (type == ObjectType::SINK)
 			color = ImColor(255, 50, 50);
-		else if (type == ObjectType::PROBE)
-			color = ImColor(255, 255, 255);
 
 		ImVec2 tl = WorldToScreen(pos.first, canvasPos, canvasSize), br = WorldToScreen(pos.second, canvasPos, canvasSize);
 
@@ -308,6 +314,172 @@ void ImGuiViewer<Particles>::DrawVisualizationWindow()
 	}
 
 	ImGui::End();
+}
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::DrawDataWindow()
+{
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	ImGuiIO& io = ImGui::GetIO();
+	ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+
+	if (m_ShowProbes)
+	{
+#ifdef IMGUI_HAS_DOCK
+		ImGui::SetNextWindowDockID(m_DockIDBottom, ImGuiCond_Appearing);
+#endif
+		bool visible = ImGui::Begin("Probes", &m_ShowProbes);
+		if (visible)
+		{
+			// Add Probe
+			{
+				static bool show_add_probe = false;
+				static float p1[2] = { 0.0f, 0.0f }, p2[2] = { 0.0f, 0.0f };
+				if (ImGui::Button("Add"))
+				{
+					show_add_probe = true;
+					p1[0] = 0; p1[1] = 0; p2[0] = 0; p2[1] = 0;
+				}
+				if (show_add_probe)
+				{
+					constexpr size_t SIZE = 255;
+					char buf[SIZE] = "\0";
+
+					if (EditProbe(center, &show_add_probe, p1, p2, buf, SIZE))
+					{
+						Probe p;
+						p.Name = buf;
+						if (p.Name.empty())
+							p.Name = std::format("Probe {}", m_Probes.size() + 1);
+						p.Selected = false;
+						p.TL = { p1[0], p1[1] };
+						p.BR = { p2[0], p2[1] };
+						m_Probes.push_back(p);
+						show_add_probe = false;
+					}
+				}
+			}
+			
+			ImGui::SameLine();
+			if (ImGui::Button("Remove All"))
+				m_Probes.clear();
+			
+			ImGui::SameLine();
+
+			// Select All
+			{
+				bool are_all_selected = !m_Probes.empty();
+				for (auto& p : m_Probes)
+					if (!p.Selected)
+						are_all_selected = false;
+
+				if (are_all_selected)
+				{
+					if (ImGui::Button("Deselect All"))
+					{
+						for (auto& p : m_Probes)
+							p.Selected = false;
+					}
+				}
+				else
+				{
+					if (ImGui::Button("Select All"))
+					{
+						for (auto& p : m_Probes)
+							p.Selected = true;
+					}
+				}
+			}
+			
+			if (ImGui::Button("Compute"))
+			{
+
+			}
+
+			if (ImGui::BeginChild("ProbesList", ImVec2(0, 0), true))
+			{
+				for (size_t i = 0; i < m_Probes.size(); ++i)
+				{
+					if (RenderProbe(i))
+					{
+						i--;
+						break;
+					}
+				}
+			}
+			ImGui::EndChild();
+		}
+		ImGui::End();
+	}
+}
+template <ParticleSet<2> Particles>
+bool ImGuiViewer<Particles>::RenderProbe(size_t i)
+{
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	ImGuiIO& io = ImGui::GetIO();
+	ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+	ImVec2 padding = ImGui::GetStyle().FramePadding;
+
+	static int edit = -1;
+
+	ImGui::PushID(to<int>(i)); // ensure unique IDs
+
+	auto& probe = m_Probes[i];
+
+	// Checkbox
+	ImGui::Checkbox(probe.Name.c_str(), &probe.Selected);
+
+	// Right-aligned "Remove" button
+	float removeWidth = ImGui::CalcTextSize("Remove").x + padding.x * 2;
+	float editWidth = ImGui::CalcTextSize("Edit").x + padding.x * 2;
+	float avail = ImGui::GetContentRegionAvail().x;
+
+	ImGui::SameLine(avail - editWidth - removeWidth - padding.x);
+
+	// Edit
+	{
+		static float p1[2] = { 0.0f, 0.0f }, p2[2] = { 0.0f, 0.0f };
+		static constexpr size_t SIZE = 255;
+		static char buf[SIZE] = "\0";
+
+		if (ImGui::Button("Edit"))
+		{
+			edit = i;
+			p1[0] = probe.TL.x; p1[1] = probe.TL.y; p2[0] = probe.BR.x; p2[1] = probe.BR.y;
+			strcpy_s(buf, SIZE * sizeof(char), probe.Name.substr(0, SIZE).data());
+		}
+
+		if (edit == i)
+		{
+			bool open = true;
+			if (EditProbe(center, &open, p1, p2, buf, SIZE))
+			{
+				probe.Name = buf;
+				if (probe.Name.empty())
+					probe.Name = std::format("Probe {}", m_Probes.size() + 1);
+				probe.TL = { p1[0], p1[1] };
+				probe.BR = { p2[0], p2[1] };
+				edit = -1;
+			}
+			if (open == false)
+				edit = -1;
+		}
+	}
+
+	ImGui::SameLine(avail - removeWidth);
+
+	if (ImGui::Button("Remove"))
+	{
+		m_Probes.erase(m_Probes.begin() + i);
+
+		edit = -1;
+		ImGui::PopID();
+		return true;
+	}
+
+	ImGui::PopID();
+	return false;
 }
 
 template <ParticleSet<2> Particles>
@@ -332,6 +504,7 @@ void ImGuiViewer<Particles>::BuildInitialLayout()
 	ImGui::DockBuilderSetNodeSize(m_DockspaceID, ImVec2(800, 600));
 
 	m_DockIDLeft = ImGui::DockBuilderSplitNode(m_DockspaceID, ImGuiDir_Left, 0.40f, nullptr, &m_DockIDCenter);
+	m_DockIDBottom = ImGui::DockBuilderSplitNode(m_DockIDLeft, ImGuiDir_Down, 0.30f, nullptr, &m_DockIDLeft);
 
 	ImGui::DockBuilderFinish(m_DockspaceID);
 #endif
@@ -400,6 +573,7 @@ void ImGuiViewer<Particles>::Loop()
 
 			DrawStatsWindow();
 			DrawVisualizationWindow();
+			DrawDataWindow();
 
 			m_RequestNewParticles = true;
 		}

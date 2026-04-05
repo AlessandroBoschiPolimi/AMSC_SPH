@@ -5,7 +5,7 @@
 
 enum class ObjectType
 {
-	UNKNOWN, SOURCE, SINK, PROBE
+	UNKNOWN, SOURCE, SINK
 };
 
 template <size_t D, ParticleSet<D> Particles>

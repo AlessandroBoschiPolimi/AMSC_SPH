@@ -2,6 +2,7 @@
 #ifndef DISABLE_UI
 #include "Observer.hpp"
 #include "Utility.hpp"
+#include "Probe.hpp"
 
 #include "Base/SPHSimulation.hpp"
 
@@ -52,6 +53,11 @@ private:
 	/// Executes on the UI thread
 	void DrawVisualizationWindow();
 	/// Executes on the UI thread
+	void DrawDataWindow();
+	/// Executes on the UI thread
+	/// Returns 1 if the probe has been removed
+	bool RenderProbe(size_t i);
+	/// Executes on the UI thread
 	void BeginFullscreenDockspace();
 	/// Executes on the UI thread
 	void BuildInitialLayout();
@@ -63,11 +69,15 @@ private:
 	std::atomic<bool> m_Running = false;
 	std::thread m_ImguiThread;
 	std::mutex m_Mutex;
-	unsigned int m_DockspaceID = 0, m_DockIDLeft = 0, m_DockIDCenter = 0;
+	unsigned int m_DockspaceID = 0, m_DockIDLeft = 0, m_DockIDCenter = 0, m_DockIDBottom = 0;
 
+
+	// ### UI STATE ###
 	bool m_Changed = false;
 	bool m_RequestNewParticles = true;
 
+
+	// ### UI DATA ###
 	float m_SimFPS = 0, m_SimTrueFPS = 0;
 	int m_SimFramesCounter = 0;
 	stdc::nanoseconds m_SimTimeCounter = 0ns, m_SimTrueTimeCounter = 0ns;
@@ -75,14 +85,24 @@ private:
 	float m_MaxVelocity = 2.5, m_MaxPressure = 10000;
 	Command<2> m_Cmd;
 
+
+	// ### SIM DATA ###
 	float m_SimTime = 0;
 	base::SPHProfiling m_SimProfiling;
 	base::SPHParams m_SimParams;
 	std::string m_SimName;
 
+	// ### PROBES ###
+	bool m_ShowProbes = false;
+	std::vector<Probe> m_Probes;
+
+
+	// ### OBJECTS ###
 	std::vector<std::pair<coord<float, 2>, coord<float, 2>>> m_ObjectPositions;
 	std::vector<ObjectType> m_ObjectTypes;
 
+
+	// ### COLORING ###
 	enum ColoringParam
 	{
 		PRESSURE, VELOCITY
