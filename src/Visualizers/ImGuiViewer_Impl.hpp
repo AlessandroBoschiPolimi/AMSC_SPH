@@ -481,7 +481,7 @@ void ImGuiViewer<Particles>::RenderProbeWindow()
 				if (op.has_value())
 				{
 					std::vector<Probe> ps = op.value();
-					m_Probes.append_range(ps);
+					m_Probes.insert(m_Probes.end(), ps.begin(), ps.end());
 				}
 				else
 				{
@@ -683,7 +683,7 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 	if (plot_type == PlotType::PRESSURE_DEPTH)
 		range = DrawPressureDepthGraph(points, counts, canvasSize, std::get<AdditionalPressureDepthSampleData>(m_AdditionalSampleData));
 
-	ImGui::Text("Items: %d", points.size());
+	ImGui::Text("Items: %ld", points.size());
 	
 	ImVec2 mousePos = ImGui::GetMousePos();
 	vec_t worldPos = ScreenToWorld(mousePos, canvasPos, canvasSize);
