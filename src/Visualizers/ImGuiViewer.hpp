@@ -43,6 +43,13 @@ public:
 	void Attach(base::SPHSimulation<2, Particles>* sim) override;
 
 private:
+	struct AdditionalPressureDepthSampleData
+	{
+		float m, b;
+		bool valid = false;
+	};
+
+
 	/// Executes on the UI thread
 	void Loop();
 
@@ -64,7 +71,7 @@ private:
 	void DrawObjects(ImDrawList* drawList);
 	void DrawProbes(ImDrawList* drawList);
 
-	GraphRange DrawPressureDepthGraph(const std::vector<coord<float, 2>>& points, const std::vector<std::pair<int, size_t>>& counts, ImVec2 canvasSize);
+	GraphRange DrawPressureDepthGraph(const std::vector<coord<float, 2>>& points, const std::vector<std::pair<int, size_t>>& counts, ImVec2 canvasSize, const AdditionalPressureDepthSampleData& data);
 
 	void BeginFullscreenDockspace();
 	void BuildInitialLayout();
@@ -94,7 +101,7 @@ private:
 	int m_SimFramesCounter = 0;
 	stdc::nanoseconds m_SimTimeCounter = 0ns, m_SimTrueTimeCounter = 0ns;
 	stdc::time_point<stdclock> m_SimFrameStart;
-	float m_MaxVelocity = 2.5, m_MaxPressure = 10000;
+	float m_MaxVelocity = 2.5, m_MaxPressure = 10000, m_MaxDensity = 2000;
 	Command<2> m_Cmd;
 
 
@@ -104,12 +111,14 @@ private:
 	base::SPHParams m_SimParams;
 	std::string m_SimName;
 
+
 	// ### PROBES ###
 	bool m_ShowProbes = false;
 	std::vector<Probe> m_Probes;
 	bool m_WantCopyProbes = false, m_WantPasteProbes = false;
 	bool m_ShowProbesData = false, m_EditingProbe = false;
 
+	std::variant<AdditionalPressureDepthSampleData> m_AdditionalSampleData;
 
 	// ### OBJECTS ###
 	std::vector<std::pair<coord<float, 2>, coord<float, 2>>> m_ObjectPositions;
@@ -119,7 +128,7 @@ private:
 	// ### COLORING ###
 	enum ColoringParam
 	{
-		PRESSURE, VELOCITY
+		PRESSURE, VELOCITY, DENSITY
 	};
 	ColoringParam m_ColoringParam = VELOCITY;
 };

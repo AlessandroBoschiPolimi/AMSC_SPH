@@ -194,7 +194,7 @@ void ImGuiViewer<Particles>::RenderStatsWindow()
 
 	ImGui::Separator();
 	{
-		static const char* items[] = { "Pressure", "Velocity" };
+		static const char* items[] = { "Pressure", "Velocity", "Density"};
 		static int coloring_param_int = 1;
 		ImGui::Combo("Coloring Parameter", &coloring_param_int, items, IM_ARRAYSIZE(items));
 		m_ColoringParam = (ColoringParam)coloring_param_int;
@@ -208,6 +208,11 @@ void ImGuiViewer<Particles>::RenderStatsWindow()
 		{
 			ImGui::SliderFloat("Max UI Velocity", &m_MaxVelocity, 0, 5, "%.5f");
 			DrawLegendScale(ImVec2(200.0f, ImGui::GetTextLineHeightWithSpacing()), 0, m_MaxVelocity);
+		}
+		else if (m_ColoringParam == DENSITY)
+		{
+			ImGui::SliderFloat("Max UI Density", &m_MaxDensity, 0, 10000, "%.5f");
+			DrawLegendScale(ImVec2(200.0f, ImGui::GetTextLineHeightWithSpacing()), 0, m_MaxDensity);
 		}
 	}
 
@@ -290,6 +295,11 @@ void ImGuiViewer<Particles>::DrawParticles(ImDrawList* drawList)
 		else if (m_ColoringParam == PRESSURE)
 		{
 			float t = std::clamp(p.Pressure / m_MaxPressure, 0.0f, 1.0f);
+			color = ImColor::HSV(0.66f - 0.66f * t, 1.0f, 1.0f); // blue -> red
+		}
+		else if (m_ColoringParam == DENSITY)
+		{
+			float t = std::clamp(p.Density / m_MaxDensity, 0.0f, 1.0f);
 			color = ImColor::HSV(0.66f - 0.66f * t, 1.0f, 1.0f); // blue -> red
 		}
 		else if (m_ColoringParam == VELOCITY)
@@ -445,8 +455,6 @@ void ImGuiViewer<Particles>::RenderProbeWindow()
 		}
 	}
 
-	ImGui::SameLine();
-
 	// Copy/Paste
 	{
 		if (ImGui::Button("Copy") || (!m_EditingProbe && m_WantCopyProbes))
@@ -483,6 +491,20 @@ void ImGuiViewer<Particles>::RenderProbeWindow()
 				}
 			}
 		}
+
+		ImGui::SameLine();
+
+		static const ImGuiComboFlags flags = ImGuiComboFlags_None;
+		static const char* items[] = { "Box Small", "Box Big" };
+		static const Probe probes_list[] = { Probe::ParseOne("Probe Small:0.5:0.1:0.51:0.045").value(), Probe::ParseOne("Probe Big:0.5:0.5:0.51:0.045").value() };
+		if (ImGui::BeginCombo("##CommonProbes", "Common Probes", flags))
+		{
+			for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+				if (ImGui::Selectable(items[n], false))
+					m_Probes.push_back(probes_list[n]);
+			ImGui::EndCombo();
+		}
+
 	}
 			
 	{
@@ -616,7 +638,7 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 	ImGui::SetNextWindowPos(center, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 	ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
 
-	bool visible = ImGui::Begin("Data");
+	bool visible = ImGui::Begin("Data", &m_ShowProbesData);
 	if (!visible) {
 		ImGui::End();
 		return;
@@ -658,7 +680,7 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 	GraphRange range;
 
 	if (plot_type == PlotType::PRESSURE_DEPTH)
-		range = DrawPressureDepthGraph(points, counts, canvasSize);
+		range = DrawPressureDepthGraph(points, counts, canvasSize, std::get<AdditionalPressureDepthSampleData>(m_AdditionalSampleData));
 
 	ImGui::Text("Items: %d", points.size());
 	
@@ -675,24 +697,26 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 
 
 template <ParticleSet<2> Particles>
-GraphRange ImGuiViewer<Particles>::DrawPressureDepthGraph(const std::vector<coord<float, 2>>& points, const std::vector<std::pair<int, size_t>>& counts, ImVec2 size)
+GraphRange ImGuiViewer<Particles>::DrawPressureDepthGraph(const std::vector<coord<float, 2>>& points, const std::vector<std::pair<int, size_t>>& counts, ImVec2 size, const AdditionalPressureDepthSampleData& data)
 {
 	auto graph_range = DrawGraph(points, size, [&](ImDrawList* drawList, ImVec2 min, ImVec2 max, ImVec2 range, ImVec2 canvasPos, ImVec2 canvasSize)
 		{
 			for (const auto& p : points)
 				drawList->AddCircleFilled(ToScreenSpace(p, min, range, canvasPos, canvasSize), 3.0f, IM_COL32(255, 255, 255, 255));
-
-			float m, b;
-			if (ComputeLinearRegression(points, m, b))
+			
+			if (data.valid)
 			{
-				coord<float, 2> p1{ min.x, m * min.x + b };
-				coord<float, 2> p2{ max.x, m * max.x + b };
+				coord<float, 2> p1{ min.x, data.m * min.x + data.b };
+				coord<float, 2> p2{ max.x, data.m * max.x + data.b };
 
 				ImVec2 sp1 = ToScreenSpace(p1, min, range, canvasPos, canvasSize);
 				ImVec2 sp2 = ToScreenSpace(p2, min, range, canvasPos, canvasSize);
 
 				drawList->AddLine(sp1, sp2, IM_COL32(255, 0, 0, 255), 2.0f);
 			}
+
+			std::string text = std::format("Slope = {}; Intercept = {}", data.m, data.b);
+			drawList->AddText(ImVec2{ canvasPos.x + 10, canvasPos.y + 10 }, IM_COL32(255, 255, 255, 255), text.c_str());
 		});
 
 	return graph_range;
@@ -788,6 +812,10 @@ void ImGuiViewer<Particles>::SampleForPressureDepth(std::vector<coord<float, 2>>
 	out_points.reserve(data.size());
 	for (const Data& part : data)
 		out_points.push_back({ -part.y + maxy, part.pressure });
+
+	AdditionalPressureDepthSampleData add_data;
+	add_data.valid = ComputeLinearRegression(out_points, add_data.m, add_data.b);
+	m_AdditionalSampleData = add_data;
 }
 
 
