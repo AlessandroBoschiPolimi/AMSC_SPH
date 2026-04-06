@@ -230,7 +230,8 @@ bool BeginEditProbeWindow(ImVec2 pos, bool* open, float p1[2], float p2[2], char
 			{
 				Probe p = op.value();
 				p1[0] = p.TL.x; p1[1] = p.TL.y; p2[0] = p.BR.x; p2[1] = p.BR.y;
-				strcpy_s(buf, size * sizeof(char), p.Name.c_str());
+				strncpy(buf, p.Name.c_str(), size - 1);
+				buf[size - 1] = '\0';
 			}
 			else
 			{

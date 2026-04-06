@@ -579,7 +579,8 @@ bool ImGuiViewer<Particles>::RenderProbe(size_t i)
 			edit = i;
 			m_EditingProbe = true;
 			p1[0] = probe.TL.x; p1[1] = probe.TL.y; p2[0] = probe.BR.x; p2[1] = probe.BR.y;
-			strcpy_s(buf, SIZE * sizeof(char), probe.Name.substr(0, SIZE).data());
+			strncpy(buf, probe.Name.substr(0, SIZE - 1).data(), SIZE - 1);
+			buf[SIZE - 1] = '\0';
 		}
 
 		if (should_disable)
