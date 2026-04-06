@@ -385,6 +385,9 @@ struct Time
 };
 
 
+struct AxisRange { float min, max; };
+struct GraphRange { AxisRange x, y; };
+
 
 // ################################################################## LOGGING ##################################################################
 template <typename T> /*requires std::is_arithmetic_v<T>*/

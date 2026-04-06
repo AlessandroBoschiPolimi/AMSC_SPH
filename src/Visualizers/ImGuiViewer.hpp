@@ -8,8 +8,10 @@
 
 #include "Command.hpp"
 
+
 struct GLFWwindow;
 struct ImDrawList;
+struct ImVec2;
 
 template <ParticleSet<2> Particles>
 class ImGuiViewer : public Observer<2, Particles> {
@@ -52,17 +54,25 @@ private:
 	/// The following functions execute on the UI thread
 	void RenderStatsWindow();
 	void RenderVisualizationWindow();
+
 	void RenderProbeWindow();
 	/// Returns true if the probe has been removed
 	bool RenderProbe(size_t i);
 	void RenderProbeDataWindow();
+
 	void DrawParticles(ImDrawList* drawList);
 	void DrawObjects(ImDrawList* drawList);
 	void DrawProbes(ImDrawList* drawList);
+
+	GraphRange DrawPressureDepthGraph(const std::vector<coord<float, 2>>& points, const std::vector<std::pair<int, size_t>>& counts, ImVec2 canvasSize);
+
 	void BeginFullscreenDockspace();
 	void BuildInitialLayout();
 
 	void ProcessShortcuts();
+
+	void ForAllParticlesInProbes(const std::function<void(int probe_id, int particle_index, float x, float y)>& fn);
+	void SampleForPressureDepth(std::vector<coord<float, 2>>& out_points, std::vector<std::pair<int, size_t>>& out_counts);
 
 private:
 	Particles m_Particles;

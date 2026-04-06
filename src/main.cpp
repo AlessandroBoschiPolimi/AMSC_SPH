@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 
 	// Test_2D_Pipe_OpenMP_Morton(); // Probe 1:0.75:0.3:0.8:0.1
 
-	Test_2D_OpenMP_Morton(); // Probe 1:0.5:0.1:0.52:0.035
+	Test_2D_OpenMP_Morton(); // Probe 1:0.5:0.1:0.51:0.045
 
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();

@@ -33,6 +33,7 @@
 static ImVec2 WorldToScreen(const Particle<2>::vec_t& p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 static Particle<2>::vec_t ScreenToWorld(const ImVec2&p, const ImVec2 canvasPos, const ImVec2 canvasSize);
 
+static bool ComputeLinearRegression(const std::vector<coord<float, 2>>& points, float& outSlope, float& outIntercept);
 
 template <ParticleSet<2> Particles>
 void ImGuiViewer<Particles>::Attach(base::SPHSimulation<2, Particles>* sim)
@@ -631,8 +632,11 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 	ImGui::Combo("##PlotType", (int*)&plot_type, items, IM_ARRAYSIZE(items));
 
 	ImGui::SameLine();
-	
+
+	/// points sampled from a probe should be contiguous
 	static std::vector<coord<float, 2>> points;
+	/// number of points sampled from the i-th probe, and it's ID
+	static std::vector<std::pair<int, size_t>> counts;
 
 	static bool realtime = false;
 	if (ImGui::Button("Generate") || realtime)
@@ -640,42 +644,8 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 		// Sample data
 		points.clear();
 
-		// TODO: turn this in like SampleForPressureDepth() that calls ForAllParticleInProbes() that takes a lambda like
-		// [](int probe_id, int particle_index, float x, float y)
-		// which queries just pressure and stores them
-
-		std::vector<Particle<2>> particles;
-
-		for (const Probe& probe : m_Probes)
-		{
-			if (!probe.Selected)
-				continue;
-
-			for (size_t i = 0; i < m_Particles.Size(); i++)
-			{
-				if (m_Particles.Type(i) != ParticleType::FLUID)
-					continue;
-
-				coord<float, 2> pos = m_Particles.Position(i);
-
-				if (pos.x >= probe.TL.x && pos.x <= probe.BR.x && pos.y >= probe.BR.y && pos.y <= probe.TL.y)
-					particles.push_back(m_Particles.GetParticle(i));
-			}
-		}
-
-
-		if (!particles.empty())
-		{
-			if (plot_type == PlotType::PRESSURE_DEPTH)
-			{
-				float miny = particles[0].Position.y;
-				for (const Particle<2>& part : particles)
-					miny = std::min(miny, part.Position.y);
-
-				for (const Particle<2>& part : particles)
-					points.push_back({ part.Position.y - miny, part.Pressure });
-			}
-		}
+		if (plot_type == PlotType::PRESSURE_DEPTH)
+			SampleForPressureDepth(points, counts);
 	}
 
 	ImGui::SameLine();
@@ -685,7 +655,10 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 	ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 	canvasSize.y = canvasSize.y - ImGui::GetFrameHeightWithSpacing();
 
-	GraphRange range = DrawGraph(points, canvasSize, DrawGraphMode::POINT, [](ImDrawList* drawList) {});
+	GraphRange range;
+
+	if (plot_type == PlotType::PRESSURE_DEPTH)
+		range = DrawPressureDepthGraph(points, counts, canvasSize);
 
 	ImGui::Text("Items: %d", points.size());
 	
@@ -694,11 +667,37 @@ void ImGuiViewer<Particles>::RenderProbeDataWindow()
 	if (worldPos.x > 0 && worldPos.y > 0 && worldPos.x < 1.0 && worldPos.y < 1.0)
 	{
 		ImGui::SameLine();
-		ImGui::Text("| Mouse Position: %.2f:%.2f", worldPos.x * (range.x.max - range.x.min) + range.x.min, worldPos.y * (range.y.max - range.y.min) + range.y.min);
+		ImGui::Text("| Mouse Position: %.3f:%.3f", worldPos.x * (range.x.max - range.x.min) + range.x.min, worldPos.y * (range.y.max - range.y.min) + range.y.min);
 	}
 
 	ImGui::End();
 }
+
+
+template <ParticleSet<2> Particles>
+GraphRange ImGuiViewer<Particles>::DrawPressureDepthGraph(const std::vector<coord<float, 2>>& points, const std::vector<std::pair<int, size_t>>& counts, ImVec2 size)
+{
+	auto graph_range = DrawGraph(points, size, [&](ImDrawList* drawList, ImVec2 min, ImVec2 max, ImVec2 range, ImVec2 canvasPos, ImVec2 canvasSize)
+		{
+			for (const auto& p : points)
+				drawList->AddCircleFilled(ToScreenSpace(p, min, range, canvasPos, canvasSize), 3.0f, IM_COL32(255, 255, 255, 255));
+
+			float m, b;
+			if (ComputeLinearRegression(points, m, b))
+			{
+				coord<float, 2> p1{ min.x, m * min.x + b };
+				coord<float, 2> p2{ max.x, m * max.x + b };
+
+				ImVec2 sp1 = ToScreenSpace(p1, min, range, canvasPos, canvasSize);
+				ImVec2 sp2 = ToScreenSpace(p2, min, range, canvasPos, canvasSize);
+
+				drawList->AddLine(sp1, sp2, IM_COL32(255, 0, 0, 255), 2.0f);
+			}
+		});
+
+	return graph_range;
+}
+
 
 template <ParticleSet<2> Particles>
 void ImGuiViewer<Particles>::BeginFullscreenDockspace()
@@ -727,6 +726,70 @@ void ImGuiViewer<Particles>::BuildInitialLayout()
 	ImGui::DockBuilderFinish(m_DockspaceID);
 #endif
 }
+
+
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::ForAllParticlesInProbes(const std::function<void(int, int, float, float)>& fn)
+{
+	for (const Probe& probe : m_Probes)
+	{
+		if (!probe.Selected)
+			continue;
+
+		for (size_t i = 0; i < m_Particles.Size(); i++)
+		{
+			if (m_Particles.Type(i) != ParticleType::FLUID)
+				continue;
+
+			coord<float, 2> pos = m_Particles.Position(i);
+
+			if (pos.x >= probe.TL.x && pos.x <= probe.BR.x && pos.y >= probe.BR.y && pos.y <= probe.TL.y)
+				fn(probe.ID, i, pos.x, pos.y);
+		}
+	}
+}
+template <ParticleSet<2> Particles>
+void ImGuiViewer<Particles>::SampleForPressureDepth(std::vector<coord<float, 2>>& out_points, std::vector<std::pair<int, size_t>>& out_counts)
+{
+	struct Data
+	{
+		float y, pressure;
+	};
+
+	std::vector<Data> data;
+	int last_probe_id = Probe::INVALID_ID;
+	size_t count = 0;
+
+	ForAllParticlesInProbes([&](int probe_id, int particle_index, float x, float y)
+		{
+			data.push_back({ y, m_Particles.Pressure(particle_index) });
+			
+			if (probe_id != last_probe_id)
+			{
+				if (last_probe_id != Probe::INVALID_ID)
+					out_counts.push_back({ last_probe_id, count });
+				count = 1;
+				last_probe_id = probe_id;
+			}
+			else
+				count++;
+		});
+
+	if (last_probe_id != Probe::INVALID_ID)
+		out_counts.push_back({ last_probe_id, count });
+
+	if (data.empty())
+		return;
+
+	float maxy = data[0].y;
+	for (const Data& part : data)
+		maxy = std::max(maxy, part.y);
+
+	out_points.reserve(data.size());
+	for (const Data& part : data)
+		out_points.push_back({ -part.y + maxy, part.pressure });
+}
+
 
 
 
@@ -915,3 +978,36 @@ bool ImGuiViewer<Particles>::Init()
 	return true;
 }
 #endif
+
+
+
+static bool ComputeLinearRegression(const std::vector<coord<float, 2>>& points, float& outSlope, float& outIntercept)
+{
+	size_t n = points.size();
+	if (n < 2)
+		return false;
+
+	double sumX = 0.0;
+	double sumY = 0.0;
+	double sumXY = 0.0;
+	double sumXX = 0.0;
+
+	for (const auto& p : points)
+	{
+		sumX += p.x;
+		sumY += p.y;
+		sumXY += p.x * p.y;
+		sumXX += p.x * p.x;
+	}
+
+	double denom = (n * sumXX - sumX * sumX);
+
+	// Prevent division by zero (vertical line or identical Xs)
+	if (std::abs(denom) < 1e-8)
+		return false;
+
+	outSlope = static_cast<float>((n * sumXY - sumX * sumY) / denom);
+	outIntercept = static_cast<float>((sumY - outSlope * sumX) / n);
+
+	return true;
+}

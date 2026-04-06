@@ -254,19 +254,18 @@ bool BeginEditProbeWindow(ImVec2 pos, bool* open, float p1[2], float p2[2], char
 }
 
 
-
-std::underlying_type_t<DrawGraphMode> operator&(DrawGraphMode a, DrawGraphMode b)
+ImVec2 ToScreenSpace(const coord<float, 2>& p, ImVec2 min, ImVec2 range, ImVec2 canvasPos, ImVec2 canvasSize)
 {
-	using type = std::underlying_type_t<DrawGraphMode>;
-	return (to<type>(a) & to<type>(b));
-}
-DrawGraphMode operator|(DrawGraphMode a, DrawGraphMode b)
-{
-	using type = std::underlying_type_t<DrawGraphMode>;
-	return to<DrawGraphMode>(to<type>(a) | to<type>(b));
+	float nx = (p.x - min.x) / range.x;
+	float ny = (p.y - min.y) / range.y;
+
+	return ImVec2(
+		canvasPos.x + nx * canvasSize.x,
+		canvasPos.y + (1.0f - ny) * canvasSize.y // invert Y
+	);
 }
 
-GraphRange DrawGraph(const std::vector<coord<float, 2>>& points, ImVec2 size, DrawGraphMode mode, const consumer<ImDrawList*>& custom_draw)
+GraphRange DrawGraph(const std::vector<coord<float, 2>>& points, ImVec2 size, const std::function<void(ImDrawList* drawlist, ImVec2 min, ImVec2 max, ImVec2 range, ImVec2 canvasPos, ImVec2 canvasSize)>& custom_draw)
 {
 	// Create a canvas
 	ImGui::BeginChild("GraphCanvas", size, true);
@@ -302,37 +301,10 @@ GraphRange DrawGraph(const std::vector<coord<float, 2>>& points, ImVec2 size, Dr
 	float rangeX = (maxX - minX) > 0 ? (maxX - minX) : 1.0f;
 	float rangeY = (maxY - minY) > 0 ? (maxY - minY) : 1.0f;
 
-	// Helper: transform point -> screen space
-	auto ToScreen = [&](const coord<float, 2>& p) -> ImVec2
-		{
-			float nx = (p.x - minX) / rangeX;
-			float ny = (p.y - minY) / rangeY;
-
-			return ImVec2(
-				canvasPos.x + nx * canvasSize.x,
-				canvasPos.y + (1.0f - ny) * canvasSize.y // invert Y
-			);
-		};
-
-	if ((mode & DrawGraphMode::LINE) != 0)
-	{
-		for (size_t i = 0; i < points.size() - 1; ++i)
-		{
-			ImVec2 p1 = ToScreen(points[i]);
-			ImVec2 p2 = ToScreen(points[i + 1]);
-
-			drawList->AddLine(p1, p2, IM_COL32(0, 255, 0, 255), 2.0f);
-		}
-	}
-
-	if ((mode & DrawGraphMode::POINT) != 0)
-	{
-		for (const auto& p : points)
-			drawList->AddCircleFilled(ToScreen(p), 3.0f, IM_COL32(255, 255, 255, 255));
-	}
+	ImVec2 min = { minX, minY }, max = { maxX, maxY }, range = { rangeX, rangeY };
 
 	if (custom_draw)
-		custom_draw(drawList);
+		custom_draw(drawList, min, max, range, canvasPos, canvasSize);
 
 	ImGui::EndChild();
 
