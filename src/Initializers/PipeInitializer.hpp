@@ -23,7 +23,7 @@ inline void PipeInitializer<2, Particles>::Init(Particles& out, float h, Objects
 
 	float density_wall = 0.002;
 	this->AddSink(obj, { 0.9, 0.5 }, { 0.95, 0.55 }, out, false);
-	this->AddSource(obj, { 0.10, 0.10 }, { 0.1001, 0.15 }, out, true, 2, 10, 0.0002f * 30, 0.025, false);
+	this->AddSource(obj, { 0.10, 0.10 }, { 0.1001, 0.15 }, out, true, 2, 10, 0.0002f * 30, 0.01, false);
 	
 	this->BuildWallAlongY(out, 0.085 , 0.1, 0.15, density_wall);
 	this->BuildWallAlongX(out, 0.1 , 0.085, 0.8, density_wall);

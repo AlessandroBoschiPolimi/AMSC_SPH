@@ -38,7 +38,7 @@ It's possible to execute the already available simulations using the following c
 - `-example`
 - `-d <2 | 3>`: simulation dimension, either 2D or 3D
 - `-par <serial | openmp | mpi>`: parallelization method
-		- `-init <box | tray | TODO>`: initial state of the particles, see [Defining Custom Simulation](#defining-custom-simulation) for further details
+- `-init <box | tray | pipe | pascal | small_box>`: initial state of the particles, see [Defining Custom Simulation](#defining-custom-simulation) for further details
 - `-nf <hash | morton>`: strategy to find particle neighbors, either spatial hashing or morton sorting
 - `-layout <AoS | SoA | hybrid>`: memory layout for collections of particles, see [Particles Memory Layout](#particles-memory-layout) for more info
 - `[-file <filename> <xyz | vtu | bvtu>]`: if present, writes particle state to a file with format ".xyz", ".vtu" or ".vtu" with binary encoding, and name `filename-{frame number}`
@@ -108,8 +108,10 @@ They can be updated during the execution of the simulation, between frames. See 
 
 The currently available initializers are
 - 2D `BoxInitializer`: creates a rectangle of solid particles with fluid particles inside, it also adds some solid obstacles
+- 2D `SmallBoxInitializer`: as above, smaller
+- 2D `PipeInitializer`: creates a pipe with a source on one end and sink on the other
+- 2D `PascalInitializer`: creates a U shaped container, with a source on one side
 - 3D `TrayInitializer`: it's like a 3D box sliced horizontally, keeping the lower half.
-- TODO: add the other initializers
 
 Both classes extend the interface `SimInitializer`, and require the memory layout has template argument.
 A custom initializer can be defined by extending `SimInitializer` and implementing the `Init` method,

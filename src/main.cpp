@@ -42,9 +42,15 @@ int main(int argc, char** argv)
 	
 	ParseExamplesArgs(argc, argv);
 
-	// Test_2D_Pipe_OpenMP_Morton(); // Probe 1:0.75:0.3:0.8:0.1
+	Test_2D_Pipe_OpenMP_Morton(); // Probe 1:0.75:0.3:0.8:0.1
+	// Test_2D_Pascal_OpenMP_Morton();
 
-	Test_2D_OpenMP_Morton(); // Probe 1:0.5:0.5:0.51:0.045
+	GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, SmallBoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, PresentationInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, TwoFluidsInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+
+	// Test_2D_OpenMP_Morton(); // Probe 1:0.5:0.5:0.51:0.045
 
 	// Test_Correctness_Generate();
 	// Test_Correctness_Check();
@@ -155,8 +161,14 @@ void ParseExamplesArgs(int argc, char** argv)
 				init = 0;
 			else if (std::strcmp(line, "tray") == 0)
 				init = 1;
+			else if (std::strcmp(line, "pipe") == 0)
+				init = 2;
+			else if (std::strcmp(line, "pascal") == 0)
+				init = 3;
+			if (std::strcmp(line, "small_box") == 0)
+				init = 4;
 			else {
-				std::cerr << "Provide either 'box', 'tray' or 'TODO' after flag '-init'";
+				std::cerr << "Provide either 'box', 'small_box, 'tray', 'pipe' or 'pascal' after flag '-init'";
 				exit(1);
 			}
 		}
@@ -236,7 +248,10 @@ void ParseExamplesArgs(int argc, char** argv)
 
 			switch (init)
 			{
-			default: initp = new BoxInitializer<Size, ParticleAoS<Size>>(); break;
+			case 0: initp = new BoxInitializer<Size, ParticleAoS<Size>>(); break;
+			case 2: initp = new PipeInitializer<Size, ParticleAoS<Size>>(); break;
+			case 3: initp = new PascalInitializer<Size, ParticleAoS<Size>>(); break;
+			default: initp = new SmallBoxInitializer<Size, ParticleAoS<Size>>(); break;
 			}
 
 			mpi::NeighborFinder<Size>* nfp;
@@ -297,7 +312,10 @@ void ParseExamplesArgs(int argc, char** argv)
 
 				switch (init)
 				{
-				default: initp = new BoxInitializer<Size, Particles>(); break;
+				case 0: initp = new BoxInitializer<Size, Particles>(); break;
+				case 2: initp = new PipeInitializer<Size, Particles>(); break;
+				case 3: initp = new PascalInitializer<Size, Particles>(); break;
+				default: initp = new SmallBoxInitializer<Size, Particles>(); break;
 				}
 
 				if (par == 0)
@@ -391,7 +409,10 @@ void ParseExamplesArgs(int argc, char** argv)
 
 				switch (init)
 				{
-				default: initp = new BoxInitializer<Size, Particles>(); break;
+				case 0: initp = new BoxInitializer<Size, Particles>(); break;
+				case 2: initp = new PipeInitializer<Size, Particles>(); break;
+				case 3: initp = new PascalInitializer<Size, Particles>(); break;
+				default: initp = new SmallBoxInitializer<Size, Particles>(); break;
 				}
 
 				if (par == 0)
@@ -485,7 +506,10 @@ void ParseExamplesArgs(int argc, char** argv)
 
 				switch (init)
 				{
-				default: initp = new BoxInitializer<Size, Particles>(); break;
+				case 0: initp = new BoxInitializer<Size, Particles>(); break;
+				case 2: initp = new PipeInitializer<Size, Particles>(); break;
+				case 3: initp = new PascalInitializer<Size, Particles>(); break;
+				default: initp = new SmallBoxInitializer<Size, Particles>(); break;
 				}
 
 				if (par == 0)

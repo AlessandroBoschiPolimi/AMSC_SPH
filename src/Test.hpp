@@ -13,6 +13,11 @@
 
 #include "Initializers/TrayInitializer.hpp"
 #include "Initializers/BoxInitializer.hpp"
+#include "Initializers/SmallBoxInitializer.hpp"
+#include "Initializers/PascalInitializer.hpp"
+#include "Initializers/PipeInitializer.hpp"
+#include "Initializers/PresentationInitializer.hpp"
+#include "Initializers/TwoFluidsInitializer.hpp"
 
 #include "OpenMP/Neighbors/SpatialHashing.hpp"
 #include "OpenMP/Neighbors/MortonSorting.hpp"
