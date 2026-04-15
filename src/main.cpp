@@ -157,6 +157,7 @@ void ParseExamplesArgs(int argc, char** argv)
 			}
 
 			line = argv[i++];
+			init = -1;
 			if (std::strcmp(line, "box") == 0)
 				init = 0;
 			else if (std::strcmp(line, "tray") == 0)
@@ -165,7 +166,7 @@ void ParseExamplesArgs(int argc, char** argv)
 				init = 2;
 			else if (std::strcmp(line, "pascal") == 0)
 				init = 3;
-			if (std::strcmp(line, "small_box") == 0)
+			else if (std::strcmp(line, "small_box") == 0)
 				init = 4;
 			else {
 				std::cerr << "Provide either 'box', 'small_box, 'tray', 'pipe' or 'pascal' after flag '-init'";
