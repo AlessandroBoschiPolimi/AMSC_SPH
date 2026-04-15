@@ -43,11 +43,11 @@ inline void SmallBoxInitializer<2, Particles>::Init(Particles& out, float h, Obj
 	// Create multiple walls of the box to avoid leaks
 	for (int i = 0; i < 2; i++)
 	{
-		this->BuildWallAlongX(out, 0.04 - h * i, 0.15, 0.65, 0.001);
-		this->BuildWallAlongX(out, 0.98 + h * i, 0.15, 0.65, 0.001);
-		this->BuildWallAlongY(out, 0.15 + h * i, 0.04, 0.98, 0.001);
+		this->BuildWallAlongX(out, 0.04 - h * i, 0.15, 0.65, 0.002);
+		this->BuildWallAlongX(out, 0.98 + h * i, 0.15, 0.65, 0.002);
+		this->BuildWallAlongY(out, 0.15 + h * i, 0.04, 0.98, 0.002);
 	}
-	this->BuildWallAlongY(out, 0.65, 0.04, 0.98, 0.001);
+	this->BuildWallAlongY(out, 0.65, 0.04, 0.98, 0.002);
 
 	this->AddSink(obj, { -10.0, 0.0 }, { 10.0, -10.0 }, out, false);
 	this->AddSink(obj, { -10.0, 1.0 }, { 10.0, 11.0 }, out, true);

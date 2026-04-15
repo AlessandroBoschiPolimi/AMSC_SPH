@@ -43,12 +43,12 @@ inline void BoxInitializer<2, Particles>::Init(Particles& out, float h, Objects&
 	// Create multiple walls of the box to avoid leaks
 	for (int i = 0; i < 2; i++)
 	{
-		this->BuildWallAlongX(out, 0.04 - h * i, 0, 1.0, 0.001);
-		this->BuildWallAlongX(out, 0.98 + h * i, 0, 1.0, 0.001);
-		this->BuildWallAlongY(out, 0 + h * i, 0.04, 0.98, 0.001);
+		this->BuildWallAlongX(out, 0.04 - h * i, 0, 1.0, 0.002);
+		this->BuildWallAlongX(out, 0.98 + h * i, 0, 1.0, 0.002);
+		this->BuildWallAlongY(out, 0 + h * i, 0.04, 0.98, 0.002);
 	}
-	this->BuildWallAlongY(out, 1.0, 0.04, 0.98, 0.001);
-	this->BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.001);
+	this->BuildWallAlongY(out, 1.0, 0.04, 0.98, 0.002);
+	this->BuildBox(out, coord<float, 2>{0.85, 0.255}, 0.1, 0.1, 0.002);
 	//this->BuildCircle(out, coord<float, 2>{0.92, 0.255}, 0.05, 0.001);
 
 	this->AddSink(obj, { -10.0, 0.0 }, { 10.0, -10.0 }, out, false);
