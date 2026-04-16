@@ -218,7 +218,7 @@ inline bool MortonSorting<D, Particles>::OutsideDomain(const cell_pos_t& pos)
 		return	pos.x < m_MinGrid.x || pos.x > m_MaxGrid.x ||
 				pos.y < m_MinGrid.y || pos.y > m_MaxGrid.y ||
 				pos.z < m_MinGrid.z || pos.z > m_MaxGrid.z;
-	else static_assert(false);
+	else static_assert(D!=D);
 	return false;
 }
 
@@ -297,7 +297,7 @@ inline MortonSorting<D, Particles>::cell_pos_t MortonSorting<D, Particles>::GetC
 			to<i32>(std::floor(p.z / h))
 		};
 	}
-	else static_assert(false);
+	else static_assert(D!=D);
 	return cell_pos_t{};
 }
 
@@ -323,7 +323,7 @@ inline u64 MortonSorting<D, Particles>::ExpandBits(u32 v)
 		x = (x | x << 2) & 0x1249249249249249;
 		return x;
 	}
-	else static_assert(false);
+	else static_assert(D!=D);
 	return v;
 }
 template <size_t D, ParticleSet<D> Particles>
@@ -333,7 +333,7 @@ inline u64 MortonSorting<D, Particles>::MortonCode(const cell_upos_t& pos)
 		return ExpandBits(pos.x) | (ExpandBits(pos.y) << 1);
 	else if constexpr (D == 3)
 		return ExpandBits(pos.x) | (ExpandBits(pos.y) << 1) | (ExpandBits(pos.z) << 2);
-	else static_assert(false);
+	else static_assert(D!=D);
 	return 0;
 }
 

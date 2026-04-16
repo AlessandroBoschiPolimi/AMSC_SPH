@@ -156,7 +156,7 @@ inline SpatialHashing<D>::cell_pos_t SpatialHashing<D>::GetCellPosition(const ve
 			to<i32>(std::floor(p.z / h))
 		};
 	}
-	else static_assert(false);
+	else static_assert(D!=D);
 	return cell_pos_t{};
 }
 

@@ -144,7 +144,7 @@ inline SpatialHashing<D, Particles>::cell_pos_t SpatialHashing<D, Particles>::Ge
 			to<i32>(std::floor(p.z / h))
 		};
 	}
-	else static_assert(false);
+	else static_assert(D!=D);
 	return cell_pos_t{};
 }
 
