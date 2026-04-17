@@ -182,11 +182,6 @@ void ImGuiViewer<Particles>::RenderStatsWindow()
 	}
 	
 	ImGui::Separator();
-	if (!m_Particles.Empty())
-	{
-		ImGui::Text("Position: %.3f %.3f", m_Particles.PositionX(0), m_Particles.PositionY(0));
-		ImGui::Text("Velocity: %.3f %.3f", m_Particles.VelocityX(0), m_Particles.VelocityY(0));
-	}
 	if (m_Cmd.Type != Command<2>::NONE)
 		ImGui::Text("Command: %.3f %.3f %.3f %.3f", m_Cmd.Position.x, m_Cmd.Position.y, m_Cmd.Radius, m_Cmd.Strength);
 	else
