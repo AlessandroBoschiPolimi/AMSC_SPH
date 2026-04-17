@@ -106,7 +106,7 @@ inline void MortonSorting<D>::InitializeFrame(SPHSimulation<D>* sim)
 		m_MaxGrid = GetCellPosition(m_DomainMax, h);
 	}
 	#pragma omp for
-	for (size_t i = 0; i < size; ++i)
+	for (i64 i = 0; i < size; ++i)
 	{
 		cell_pos_t cell;
 		int idx;
@@ -136,33 +136,33 @@ inline void MortonSorting<D>::InitializeFrame(SPHSimulation<D>* sim)
 				return morton[a] < morton[b];
 			});
 	}
+	{
+		#pragma omp single
+			particles.resize(size);
+		#pragma omp for
+		for (i64 i = 0; i < indices.size(); ++i)
 		{
-			#pragma omp single
-				particles.resize(size);
-			#pragma omp for
-			for (size_t i = 0; i < indices.size(); ++i)
-			{
-				if (indices[i] < particles_local.Size())
-					particles[i] = &particles_local.ParticlesVector[indices[i]];
-				else
-					particles[i] = &particles_ghost.ParticlesVector[indices[i] - particles_local.Size()];
-				indices_rev[indices[i]] = i;
-			}
+			if (indices[i] < particles_local.Size())
+				particles[i] = &particles_local.ParticlesVector[indices[i]];
+			else
+				particles[i] = &particles_ghost.ParticlesVector[indices[i] - particles_local.Size()];
+			indices_rev[indices[i]] = i;
 		}
+	}
 
+	{
+		static std::vector<u64> tmp;
+		#pragma omp single
+			tmp.resize(size);
+		#pragma omp for
+		for (i64 i = 0; i < indices.size(); ++i)
+			tmp[i] = morton[indices[i]];
+		#pragma omp single
 		{
-			static std::vector<u64> tmp;
-			#pragma omp single
-				tmp.resize(size);
-			#pragma omp for
-			for (size_t i = 0; i < indices.size(); ++i)
-				tmp[i] = morton[indices[i]];
-			#pragma omp single
-			{
-				morton = std::move(tmp);
-				tmp.clear();
-			}
+			morton = std::move(tmp);
+			tmp.clear();
 		}
+	}
 
 	// Build cell ranges
 	#pragma omp single
@@ -170,31 +170,31 @@ inline void MortonSorting<D>::InitializeFrame(SPHSimulation<D>* sim)
 		m_UniqueCells.clear();
 		m_CellStart.clear();
 		m_CellEnd.clear();
-	for (size_t i = 0; i < size; )
-	{
-		u64 code = morton[i];
-		size_t start = i;
+		for (size_t i = 0; i < size; )
+		{
+			u64 code = morton[i];
+			size_t start = i;
 
-		while (i < size && morton[i] == code)
-			++i;
+			while (i < size && morton[i] == code)
+				++i;
 
-		size_t end = i;
+			size_t end = i;
 
-		m_UniqueCells.push_back(code);
-		m_CellStart.push_back(start);
-		m_CellEnd.push_back(end);
-	}
+			m_UniqueCells.push_back(code);
+			m_CellStart.push_back(start);
+			m_CellEnd.push_back(end);
+		}
 
-	m_MinCode = morton.front();
-	m_MaxCode = morton.back();
-	size_t tableSize = to<size_t>(m_MaxCode - m_MinCode + 1);
+		m_MinCode = morton.front();
+		m_MaxCode = morton.back();
+		size_t tableSize = to<size_t>(m_MaxCode - m_MinCode + 1);
 
-	// dense table: maps Morton code -> index in m_UniqueCells
-	m_MortonLookup.clear();
-	m_MortonLookup.resize(tableSize, -1);
+		// dense table: maps Morton code -> index in m_UniqueCells
+		m_MortonLookup.clear();
+		m_MortonLookup.resize(tableSize, -1);
 	}
 	#pragma omp for
-	for (size_t idx = 0; idx < m_UniqueCells.size(); ++idx) {
+	for (i64 idx = 0; idx < m_UniqueCells.size(); ++idx) {
 		uint64_t code = m_UniqueCells[idx];
 		m_MortonLookup[code - m_MinCode] = static_cast<int>(idx);
 	}
