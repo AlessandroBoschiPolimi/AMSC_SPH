@@ -30,7 +30,7 @@
 #define SIZE 2
 
 void ParseArgs(int argc, char** argv);
-void ParseExamplesArgs(int argc, char** argv);
+bool ParseExamplesArgs(int argc, char** argv);
 
 
 // Main code
@@ -40,7 +40,9 @@ int main(int argc, char** argv)
 	
 	std::cout << "OpenMP Max Threads: " << omp_get_max_threads() << '\n';
 	
-	ParseExamplesArgs(argc, argv);
+	bool example = ParseExamplesArgs(argc, argv);
+	if (example)
+		return 0;
 
 	// Test_2D_Pipe_OpenMP_Morton(); // Probe 1:0.75:0.3:0.8:0.1
 	// Test_2D_Pascal_OpenMP_Morton();
@@ -80,7 +82,7 @@ void ParseArgs(int argc, char** argv)
 	}
 }
 
-void ParseExamplesArgs(int argc, char** argv)
+bool ParseExamplesArgs(int argc, char** argv)
 {
 	int size = 2, par = 1, init = 0, nf = 1, layout = 0;
 	bool file = false, ui = false;
@@ -223,7 +225,7 @@ void ParseExamplesArgs(int argc, char** argv)
 
 
 	if (!run_example)
-		return;
+		return false;
 
 	if (size == 2)
 	{
@@ -889,4 +891,6 @@ void ParseExamplesArgs(int argc, char** argv)
 			}
 		}
 	}
+
+	return true;
 }

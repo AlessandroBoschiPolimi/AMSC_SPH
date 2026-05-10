@@ -47,6 +47,12 @@ It's possible to execute the already available simulations using the following c
 	using the number of physical cores might yield a faster execution,
 	by default OpenMP uses the number of logical / SMT / Hyper-Threading cores,
 	which is worse because SPH can be memory-bandwidth bound, not compute-bound
+	
+Some quick examples can be executed using the following
+	
+	./AMSC_SPH -example -d 2 -par openmp -init box    -nf morton -layout hybrid -ui
+	./AMSC_SPH -example -d 2 -par openmp -init pipe   -nf morton -layout hybrid -ui
+	./AMSC_SPH -example -d 2 -par openmp -init pascal -nf morton -layout hybrid -ui
 
 ## Defining Custom Simulation
 
