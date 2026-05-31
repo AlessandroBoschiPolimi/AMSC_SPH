@@ -17,6 +17,8 @@ Code to simulate and visualize fluids using Smoothed Particle Hydrodynamics appr
 
 	sudo apt install wayland-protocols libwayland-dev libxkbcommon-dev pkg-config libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev mesa-common-dev openmpi-bin libopenmpi-dev
 
+Clone the repo with `--recursive`
+
 ## Build
 
 	cmake -S . --preset <windows | linux>-<debug | release | reldeb>
