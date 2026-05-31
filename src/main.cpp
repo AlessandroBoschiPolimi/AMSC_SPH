@@ -47,7 +47,9 @@ int main(int argc, char** argv)
 	// Test_2D_Pipe_OpenMP_Morton(); // Probe 1:0.75:0.3:0.8:0.1
 	// Test_2D_Pascal_OpenMP_Morton();
 
+#ifndef DISABLE_UI
 	GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, SmallBoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
+#endif
 	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, BoxInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
 	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, PresentationInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
 	// GENERATE_TEST_CASE_VIEW(2, openmp, MortonSorting, ParticleAoS, TwoFluidsInitializer, "2D_OMP_AoS_Morton", base::SPHParams{});
