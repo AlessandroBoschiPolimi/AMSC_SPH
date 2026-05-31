@@ -22,7 +22,7 @@ public:
 
 private:
 	stdc::time_point<stdclock> m_SimFrameEnd;
-	u32 m_Frequency = 10;
+	u32 m_Frequency = 100;
 	std::string m_BaseName = "output";
 
 	ExportFormat m_Format = VTU_01;

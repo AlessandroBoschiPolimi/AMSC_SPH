@@ -49,7 +49,7 @@ inline void TrayInitializer<3, Particles>::Init(Particles& out, float h, Objects
 
 	// Create multiple walls of the box to avoid leaks
 	{
-		float maxx = 1.0 / 4, maxy = 1.0 / 4, maxz = 0.6;
+		float maxx = 1.0 / 4, maxy = 1.0 / 4, maxz = 0.25;
 		for (int i = 0; i < 1; i++)
 		{
 			this->BuildWallAlongXY(out, 0 + h  * i , 0, maxx, 0, maxy, 0.0025);
